@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skribble — Draw & Guess</title>
+  <meta name="description" content="Multiplayer drawing and guessing game. Create a room, invite friends, pick custom words, and draw!" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>" />
+</head>
+<body>
+  <div class="bg-noise" aria-hidden="true"></div>
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen active">
+    <div class="home-wrap">
+      <header class="brand">
+        <h1 class="logo">Skribble</h1>
+        <p class="tagline">Draw it. Guess it. Own the podium.</p>
+      </header>
+
+      <div class="home-panel">
+        <label class="field">
+          <span>Your name</span>
+          <input id="player-name" type="text" maxlength="16" placeholder="Enter a nickname" autocomplete="off" />
+        </label>
+
+        <div class="avatar-picker">
+          <span class="field-label">Avatar</span>
+          <div class="avatar-row">
+            <button type="button" class="icon-btn" id="avatar-prev" aria-label="Previous avatar">‹</button>
+            <div id="avatar-preview" class="avatar" data-shape="0" data-color="0"></div>
+            <button type="button" class="icon-btn" id="avatar-next" aria-label="Next avatar">›</button>
+            <button type="button" class="ghost-btn" id="avatar-random">Shuffle</button>
+          </div>
+        </div>
+
+        <div class="home-actions">
+          <button type="button" class="btn btn-primary" id="btn-create">Create Private Room</button>
+          <div class="join-row">
+            <input id="join-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" />
+            <button type="button" class="btn btn-secondary" id="btn-join">Join</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="screen-lobby" class="screen">
+    <div class="lobby-layout">
+      <header class="lobby-top">
+        <div class="logo-sm">Skribble</div>
+        <div class="room-invite">
+          <span>Invite code</span>
+          <strong id="room-code-display">------</strong>
+          <button type="button" class="btn btn-tiny" id="btn-copy-invite">Copy link</button>
+        </div>
+      </header>
+
+      <div class="lobby-grid">
+        <aside class="players-panel">
+          <h2>Players <span id="player-count">(1)</span></h2>
+          <ul id="lobby-players" class="player-list"></ul>
+          <p class="hint" id="lobby-wait">Waiting for friends… share the invite link!</p>
+        </aside>
+
+        <div class="settings-panel" id="settings-panel">
+          <h2>Room settings</h2>
+          <div class="settings-grid">
+            <label class="field">
+              <span>Rounds</span>
+              <select id="set-rounds">
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Draw time</span>
+              <select id="set-drawtime">
+                <option value="30">30s</option>
+                <option value="45">45s</option>
+                <option value="60">60s</option>
+                <option value="80" selected>80s</option>
+                <option value="100">100s</option>
+                <option value="120">120s</option>
+                <option value="180">180s</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Word choices</span>
+              <select id="set-wordcount">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Hints</span>
+              <select id="set-hints">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Custom words <em>(comma-separated, min 10 for custom-only)</em></span>
+            <textarea id="set-custom-words" rows="4" placeholder="pizza, skateboard, volcano, headphones, cactus, ..."></textarea>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="set-custom-only" />
+            <span>Use custom words only</span>
+          </label>
+
+          <div class="lobby-actions">
+            <button type="button" class="btn btn-primary" id="btn-start" disabled>Start game</button>
+            <button type="button" class="btn btn-ghost" id="btn-leave-lobby">Leave</button>
+          </div>
+          <p class="host-note" id="host-note">Only the host can change settings and start.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="game-layout">
+      <header class="game-top">
+        <div class="round-meta">
+          <span id="round-label">Round 1 / 3</span>
+          <span class="timer" id="timer">80</span>
+        </div>
+        <div class="word-display" id="word-display">_ _ _ _</div>
+        <div class="game-room">
+          <span id="game-room-code"></span>
+        </div>
+      </header>
+
+      <aside class="scores-panel">
+        <h3>Scores</h3>
+        <ul id="score-list" class="player-list"></ul>
+      </aside>
+
+      <main class="canvas-panel">
+        <div class="canvas-wrap">
+          <canvas id="draw-canvas" width="800" height="560"></canvas>
+          <div id="choose-overlay" class="overlay hidden">
+            <p>Choose a word to draw</p>
+            <div id="word-choices" class="word-choices"></div>
+          </div>
+          <div id="reveal-overlay" class="overlay hidden">
+            <p id="reveal-text">The word was…</p>
+          </div>
+          <div id="waiting-overlay" class="overlay hidden">
+            <p id="waiting-text">Waiting for drawer…</p>
+          </div>
+        </div>
+
+        <div id="toolbar" class="toolbar hidden">
+          <div class="tool-group colors" id="color-palette"></div>
+          <div class="tool-group">
+            <button type="button" class="tool active" data-tool="pen" title="Pen">✏️</button>
+            <button type="button" class="tool" data-tool="eraser" title="Eraser">🧽</button>
+            <button type="button" class="tool" data-tool="fill" title="Fill">🪣</button>
+          </div>
+          <div class="tool-group sizes">
+            <input type="range" id="pen-size" min="2" max="40" value="6" />
+            <span id="pen-size-label">6</span>
+          </div>
+          <div class="tool-group">
+            <button type="button" class="tool" id="btn-undo" title="Undo">↶</button>
+            <button type="button" class="tool" id="btn-clear" title="Clear">🗑</button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="chat-panel">
+        <h3>Chat / Guesses</h3>
+        <div id="chat-log" class="chat-log"></div>
+        <form id="chat-form" class="chat-form">
+          <input id="chat-input" type="text" maxlength="48" placeholder="Type your guess…" autocomplete="off" />
+          <button type="submit" class="btn btn-tiny">Send</button>
+        </form>
+      </aside>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="results-wrap">
+      <h1 class="logo">Game over!</h1>
+      <div id="podium" class="podium"></div>
+      <ul id="final-scores" class="final-scores"></ul>
+      <div class="results-actions">
+        <button type="button" class="btn btn-primary" id="btn-play-again">Back to lobby</button>
+        <button type="button" class="btn btn-ghost" id="btn-home">Home</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <div id="connecting" class="connecting hidden">
+    <div class="spinner"></div>
+    <p>Connecting…</p>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/words.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
