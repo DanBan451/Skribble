@@ -61,12 +61,16 @@ body.theme-dark .settings-panel,
 body.theme-dark .players-panel,
 body.theme-dark .scores-panel,
 body.theme-dark .chat-panel,
-body.theme-dark .canvas-wrap,
 body.theme-dark .game-top,
 body.theme-dark .room-invite,
 body.theme-dark .toolbar {
   background: rgba(12, 16, 28, 0.72);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Keep the drawing surface paper-white in every theme */
+.canvas-wrap {
+  background: #ffffff !important;
 }
 
 body.theme-dark input,
@@ -892,8 +896,9 @@ textarea {
 .word-choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.75rem;
   justify-content: center;
+  max-width: 560px;
 }
 
 .word-choices button {
@@ -901,18 +906,26 @@ textarea {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.15rem;
-  padding: 0.75rem 1.2rem;
+  padding: 0.85rem 1.25rem;
   border-radius: 14px;
-  border: none;
-  background: #fff;
-  color: var(--ink);
+  border: 3px solid #1a2a33;
+  background: #fffef8;
+  color: #1a2a33 !important;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  transition: transform 0.12s;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s, background 0.12s;
+  -webkit-text-fill-color: #1a2a33;
 }
 
 .word-choices button:hover {
   transform: translateY(-2px) scale(1.03);
+  background: #ffe08a;
+}
+
+body.theme-dark .word-choices button {
+  background: #fffef8;
+  color: #1a2a33 !important;
+  border-color: #1a2a33;
 }
 
 .toolbar {
