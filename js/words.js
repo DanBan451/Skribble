@@ -1,7 +1,4 @@
-/**
- * Each concept can be guessed in EN / RU / UK.
- * Fair mode accepts any translation — great for mixed-language friend groups.
- */
+/** English word concepts, tagged for themes. */
 const CONCEPTS = [
   // everyday
   { id: "apple", en: "apple", ru: "яблоко", uk: "яблуко", tags: ["everyday", "food", "classic"] },
@@ -151,31 +148,15 @@ function normalizeGuess(text) {
 }
 
 function conceptAnswers(concept) {
-  return [concept.en, concept.ru, concept.uk]
-    .filter(Boolean)
-    .map(normalizeGuess);
+  return [concept.en].filter(Boolean).map(normalizeGuess);
 }
 
-function displayWord(concept, lang) {
-  if (!concept) return "";
-  if (lang === "ru") return concept.ru || concept.en;
-  if (lang === "uk") return concept.uk || concept.en;
-  if (lang === "fair") {
-    // Rotate display language by concept id for variety, but keep length fair-ish
-    const pick = concept.id.charCodeAt(0) % 3;
-    return [concept.en, concept.ru, concept.uk][pick] || concept.en;
-  }
-  return concept.en;
+function displayWord(concept) {
+  return concept?.en || "";
 }
 
-function drawerLabel(concept, lang) {
-  if (!concept) return "";
-  if (lang === "fair") {
-    const parts = [concept.en, concept.ru, concept.uk].filter(Boolean);
-    // unique-ish while preserving order
-    return [...new Set(parts)].join(" · ");
-  }
-  return displayWord(concept, lang);
+function drawerLabel(concept) {
+  return displayWord(concept);
 }
 
 function parseCustomWords(text) {
@@ -213,7 +194,7 @@ function buildWordPool({ customWords, customOnly, themeId }) {
   const custom = parseCustomWords(customWords);
   if (customOnly) {
     if (custom.length < 10) {
-      throw new Error("Need at least 10 custom words when using custom-only mode. / Нужно минимум 10 своих слов.");
+      throw new Error("Need at least 10 custom words when using custom-only mode.");
     }
     return custom;
   }

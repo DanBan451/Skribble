@@ -19,7 +19,6 @@ class SkribbleGame {
       hints: 2,
       customWords: "",
       customOnly: false,
-      language: "fair",
       themeId: "classic",
       themeTitle: "Classic Sketch"
     };
@@ -72,8 +71,8 @@ class SkribbleGame {
   choicePayload(concept) {
     return {
       id: concept.id,
-      label: drawerLabel(concept, this.settings.language),
-      preview: displayWord(concept, this.settings.language)
+      label: drawerLabel(concept),
+      preview: displayWord(concept)
     };
   }
 
@@ -81,7 +80,7 @@ class SkribbleGame {
     if (!this.currentConcept) return null;
     return {
       id: this.currentConcept.id,
-      label: drawerLabel(this.currentConcept, this.settings.language),
+      label: drawerLabel(this.currentConcept),
       display: this.currentWord,
       answers: conceptAnswers(this.currentConcept)
     };
@@ -100,7 +99,7 @@ class SkribbleGame {
       blanks: this.currentWord ? wordBlank(this.currentWord, this.revealedHints) : "",
       secret: showSecret ? this.secretPayload() : null,
       // legacy string field for older UI bits
-      secretWord: showSecret ? drawerLabel(this.currentConcept, this.settings.language) : null,
+      secretWord: showSecret ? drawerLabel(this.currentConcept) : null,
       wordChoices: this.iAmDrawer() && this.phase === PHASE.CHOOSING
         ? this.wordChoices.map((c) => this.choicePayload(c))
         : null,
@@ -123,7 +122,7 @@ class SkribbleGame {
       this.net.sendTo(conn, {
         ...base,
         secret: showSecret ? this.secretPayload() : null,
-        secretWord: showSecret ? drawerLabel(this.currentConcept, this.settings.language) : null,
+        secretWord: showSecret ? drawerLabel(this.currentConcept) : null,
         wordChoices: isDrawer && this.phase === PHASE.CHOOSING
           ? this.wordChoices.map((c) => this.choicePayload(c))
           : null
@@ -136,7 +135,7 @@ class SkribbleGame {
         ? this.secretPayload()
         : null,
       secretWord: this.iAmDrawer() || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS
-        ? drawerLabel(this.currentConcept, this.settings.language)
+        ? drawerLabel(this.currentConcept)
         : null,
       wordChoices: this.iAmDrawer() && this.phase === PHASE.CHOOSING
         ? this.wordChoices.map((c) => this.choicePayload(c))
@@ -151,7 +150,7 @@ class SkribbleGame {
   hostStart() {
     if (!this.net.isHost) return;
     if (this.players.size < 2) {
-      this.ui.toast("Need at least 2 players / Нужно минимум 2 игрока");
+      this.ui.toast("Need at least 2 players to start.");
       return;
     }
     try {
@@ -197,7 +196,7 @@ class SkribbleGame {
     if (!concept) return;
 
     this.currentConcept = concept;
-    this.currentWord = displayWord(concept, this.settings.language);
+    this.currentWord = displayWord(concept);
     this.usedWords.add(concept.id);
     this.phase = PHASE.DRAWING;
     this.endsAt = Date.now() + this.settings.drawTime * 1000;
@@ -263,10 +262,10 @@ class SkribbleGame {
       this.net.broadcast({
         type: "chat",
         kind: "close",
-        text: `${player.name}: ${guess}  (close! / близко!)`,
+        text: `${player.name}: ${guess}  (close!)`,
         fromId: playerId
       });
-      this.ui.addChat({ kind: "close", text: `${player.name}: ${guess}  (close! / близко!)` });
+      this.ui.addChat({ kind: "close", text: `${player.name}: ${guess}  (close!)` });
       return;
     }
 
@@ -286,7 +285,7 @@ class SkribbleGame {
     this.phase = PHASE.REVEAL;
     this.endsAt = Date.now() + 4000;
     this.broadcastState();
-    const label = drawerLabel(this.currentConcept, this.settings.language) || this.currentWord;
+    const label = drawerLabel(this.currentConcept) || this.currentWord;
     const msg = reason === "all"
       ? `Everyone got it! The word was “${label}”.`
       : `Time's up! The word was “${label}”.`;

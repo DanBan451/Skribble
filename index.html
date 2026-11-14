@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skribble — Draw & Guess</title>
-  <meta name="description" content="Multiplayer drawing and guessing game with themes and fair EN/RU/UK words." />
+  <meta name="description" content="Multiplayer drawing and guessing game with themes, custom words, and invite rooms." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
@@ -25,8 +25,8 @@
 
       <div class="home-panel">
         <label class="field">
-          <span>Your name / Ім'я / Имя</span>
-          <input id="player-name" type="text" maxlength="16" placeholder="Daniel" autocomplete="off" />
+          <span>Your name</span>
+          <input id="player-name" type="text" maxlength="16" placeholder="Enter a nickname" autocomplete="off" />
         </label>
 
         <div class="avatar-studio">
@@ -110,20 +110,6 @@
           <div id="theme-rail" class="theme-rail"></div>
           <p class="theme-now"><span id="theme-emoji">✏️</span> <strong id="theme-name">Classic Sketch</strong></p>
 
-          <label class="field">
-            <span>Word language / Мова слів</span>
-            <select id="set-language">
-              <option value="fair" selected>Fair mode — EN + RU + UK all count ✅</option>
-              <option value="en">English only</option>
-              <option value="ru">Русский</option>
-              <option value="uk">Українська</option>
-            </select>
-          </label>
-          <p class="fair-note" id="fair-note">
-            Fair mode is best for your group: the drawer sees all translations, and guessing
-            <em>apple</em>, <em>яблоко</em>, or <em>яблуко</em> all count.
-          </p>
-
           <div class="settings-grid">
             <label class="field">
               <span>Rounds</span>
@@ -175,8 +161,8 @@
           <details class="advanced">
             <summary>Custom words (optional)</summary>
             <label class="field">
-              <span>Comma-separated — any language is fine</span>
-              <textarea id="set-custom-words" rows="3" placeholder="борщ, metro, кактус, disco ball, ..."></textarea>
+              <span>Comma-separated English words</span>
+              <textarea id="set-custom-words" rows="3" placeholder="pizza, skateboard, volcano, headphones, ..."></textarea>
             </label>
             <label class="check">
               <input type="checkbox" id="set-custom-only" />

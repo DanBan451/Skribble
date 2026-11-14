@@ -135,9 +135,7 @@ const App = {
           state: {
             ...state,
             secret: showSecret ? this.game.secretPayload() : null,
-            secretWord: showSecret
-              ? drawerLabel(this.game.currentConcept, this.game.settings.language)
-              : null,
+            secretWord: showSecret ? drawerLabel(this.game.currentConcept) : null,
             wordChoices: isDrawer && this.game.phase === PHASE.CHOOSING
               ? this.game.wordChoices.map((c) => this.game.choicePayload(c))
               : null

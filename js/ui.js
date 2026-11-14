@@ -24,7 +24,6 @@ const UI = {
     this.bindGame();
     this.bindResults();
     applyTheme(this.themeId);
-    this.updateFairNote();
     window.addEventListener("resize", () => this.draw.resizeToDisplay());
   },
 
@@ -125,13 +124,12 @@ const UI = {
 
   bindLobby() {
     const sync = () => this.syncSettings();
-    ["set-rounds", "set-drawtime", "set-wordcount", "set-hints", "set-custom-words", "set-custom-only", "set-language"]
+    ["set-rounds", "set-drawtime", "set-wordcount", "set-hints", "set-custom-words", "set-custom-only"]
       .forEach((id) => {
         const el = document.getElementById(id);
         el.addEventListener("change", sync);
         if (el.tagName === "TEXTAREA") el.addEventListener("blur", sync);
       });
-    document.getElementById("set-language").addEventListener("change", () => this.updateFairNote());
     document.getElementById("btn-roll-theme").onclick = () => this.rollTheme();
   },
 
@@ -139,20 +137,6 @@ const UI = {
     if (!App.game || !App.net.isHost) return;
     App.game.settings = this.readSettings();
     App.game.broadcastState();
-  },
-
-  updateFairNote() {
-    const lang = document.getElementById("set-language").value;
-    const note = document.getElementById("fair-note");
-    if (lang === "fair") {
-      note.textContent = "Fair mode: drawer sees EN · RU · UK, and any of those guesses count. Best for mixed-language friends.";
-    } else if (lang === "ru") {
-      note.textContent = "Blanks/hints use Russian. In-theme words still accept EN/UK translations too, so nobody is stuck.";
-    } else if (lang === "uk") {
-      note.textContent = "Blanks/hints use Ukrainian. Matching EN/RU translations still count.";
-    } else {
-      note.textContent = "Blanks/hints use English. Matching RU/UK translations still count so it's less unfair.";
-    }
   },
 
   bindGame() {
@@ -224,7 +208,6 @@ const UI = {
       hints: Number(document.getElementById("set-hints").value),
       customWords: document.getElementById("set-custom-words").value,
       customOnly: document.getElementById("set-custom-only").checked,
-      language: document.getElementById("set-language").value,
       themeId: this.themeId,
       themeTitle: this.themeTitle
     };
@@ -237,9 +220,7 @@ const UI = {
     document.getElementById("set-hints").value = String(s.hints);
     document.getElementById("set-custom-words").value = s.customWords || "";
     document.getElementById("set-custom-only").checked = !!s.customOnly;
-    document.getElementById("set-language").value = s.language || "fair";
     if (s.themeId) this.selectTheme(s.themeId, s.themeTitle);
-    this.updateFairNote();
   },
 
   showScreen(id) {
@@ -415,12 +396,7 @@ const UI = {
       chatInput.placeholder = "Waiting…";
     } else {
       chatInput.disabled = false;
-      const lang = state.settings.language;
-      chatInput.placeholder = lang === "fair"
-        ? "Guess in EN / RU / UK…"
-        : lang === "ru" ? "Ваш ответ…"
-          : lang === "uk" ? "Ваша відповідь…"
-            : "Type your guess…";
+      chatInput.placeholder = "Type your guess…";
     }
 
     this.renderScores(state.players, drawerId, state.guessedIds || []);
