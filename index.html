@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <link rel="stylesheet" href="css/style.css?v=4" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>" />
 </head>
 <body data-theme="classic">
@@ -221,11 +221,22 @@
             <p>Choose a word to draw</p>
             <div id="word-choices" class="word-choices"></div>
           </div>
-          <div id="reveal-overlay" class="overlay hidden">
-            <p id="reveal-text">The word was…</p>
+          <div id="reveal-overlay" class="overlay reveal-overlay hidden">
+            <p id="reveal-eyebrow" class="reveal-eyebrow">Time's up</p>
+            <p id="reveal-title" class="reveal-title">You missed it</p>
+            <p id="reveal-answer" class="reveal-answer">—</p>
+            <p id="reveal-sub" class="reveal-sub">That was the word</p>
           </div>
           <div id="waiting-overlay" class="overlay hidden">
             <p id="waiting-text">Waiting for drawer…</p>
+          </div>
+          <div id="correct-burst" class="correct-burst hidden" aria-hidden="true">
+            <div class="correct-burst-card">
+              <p class="correct-burst-eyebrow">Nailed it</p>
+              <p id="correct-burst-title" class="correct-burst-title">Got it!</p>
+              <p id="correct-burst-pts" class="correct-burst-pts"></p>
+            </div>
+            <div id="correct-burst-bits" class="correct-burst-bits"></div>
           </div>
         </div>
 
@@ -282,13 +293,13 @@
   </div>
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="js/themes.js?v=4"></script>
-  <script src="js/words.js?v=4"></script>
-  <script src="js/wordai.js?v=4"></script>
-  <script src="js/canvas.js?v=4"></script>
-  <script src="js/net.js?v=4"></script>
-  <script src="js/game.js?v=4"></script>
-  <script src="js/ui.js?v=4"></script>
-  <script src="js/main.js?v=4"></script>
+  <script src="js/themes.js?v=5"></script>
+  <script src="js/words.js?v=5"></script>
+  <script src="js/wordai.js?v=5"></script>
+  <script src="js/canvas.js?v=5"></script>
+  <script src="js/net.js?v=5"></script>
+  <script src="js/game.js?v=5"></script>
+  <script src="js/ui.js?v=5"></script>
+  <script src="js/main.js?v=5"></script>
 </body>
 </html>

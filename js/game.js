@@ -37,6 +37,7 @@ class SkribbleGame {
     this.timerId = null;
     this.hintTimers = [];
     this.turnScores = new Map();
+    this.revealReason = null;
   }
 
   nameKey(name) {
@@ -205,7 +206,8 @@ class SkribbleGame {
       guessedIds: Array.from(this.guessedIds),
       endsAt: this.endsAt,
       roomCode: this.net.roomCode,
-      turnKey: this.turnKey || `${this.round}-${this.drawerIndex}`
+      turnKey: this.turnKey || `${this.round}-${this.drawerIndex}`,
+      revealReason: this.phase === PHASE.REVEAL ? this.revealReason : null
     };
   }
 
@@ -280,6 +282,7 @@ class SkribbleGame {
     this.revealedHints = [];
     this.guessedIds = new Set();
     this.turnScores = new Map();
+    this.revealReason = null;
     this.phase = PHASE.CHOOSING;
     this.endsAt = Date.now() + 15000;
     this.turnKey = `${this.round}:${this.drawerIndex}:${Date.now()}`;
@@ -360,8 +363,18 @@ class SkribbleGame {
       const msg = drawerPts
         ? `${player.name} got it! +${pts}  ·  drawer +${drawerPts}`
         : `${player.name} got it! +${pts}`;
-      this.ui.systemChat(msg);
+      this.ui.addChat({ kind: "correct", text: msg });
       this.net.broadcast({ type: "chat", kind: "correct", text: msg });
+      const fx = {
+        type: "correct-fx",
+        playerId,
+        name: player.name,
+        pts,
+        drawerPts,
+        drawerId: drawer?.id || null
+      };
+      this.ui.celebrateCorrect(fx);
+      this.net.broadcast(fx);
       this.broadcastState();
 
       const guessers = this.getPlayers().filter((p) => p.id !== drawer?.id);
@@ -396,16 +409,18 @@ class SkribbleGame {
     if (this.phase !== PHASE.DRAWING && this.phase !== PHASE.CHOOSING) return;
     this.clearTimers();
     this.phase = PHASE.REVEAL;
-    this.endsAt = Date.now() + 4000;
+    this.revealReason = reason === "all" ? "all" : "time";
+    this.endsAt = Date.now() + 5200;
     this.broadcastState();
     const label = drawerLabel(this.currentConcept) || this.currentWord;
     const msg = reason === "all"
       ? `Everyone got it! The word was “${label}”.`
       : `Time's up! The word was “${label}”.`;
-    this.ui.systemChat(msg);
-    this.net.broadcast({ type: "chat", kind: "system", text: msg });
+    this.ui.addChat({ kind: reason === "all" ? "correct" : "reveal", text: msg });
+    this.net.broadcast({ type: "chat", kind: reason === "all" ? "correct" : "reveal", text: msg });
+    this.ui.playRevealFx(this.revealReason);
 
-    this.timerId = setTimeout(() => this.nextTurn(), 4000);
+    this.timerId = setTimeout(() => this.nextTurn(), 5200);
   }
 
   nextTurn() {

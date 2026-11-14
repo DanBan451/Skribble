@@ -297,6 +297,11 @@ const App = {
       return;
     }
 
+    if (data.type === "correct-fx") {
+      UI.celebrateCorrect(data);
+      return;
+    }
+
     if (data.type === "chat") {
       UI.addChat({ kind: data.kind, text: data.text });
     }

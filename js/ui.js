@@ -373,6 +373,106 @@ const UI = {
     this._toastT = setTimeout(() => el.classList.add("hidden"), 2600);
   },
 
+  showReveal(state, amDrawer, alreadyGuessed) {
+    const reveal = document.getElementById("reveal-overlay");
+    const eyebrow = document.getElementById("reveal-eyebrow");
+    const title = document.getElementById("reveal-title");
+    const answer = document.getElementById("reveal-answer");
+    const sub = document.getElementById("reveal-sub");
+    const word = state.secretWord || "???";
+    const reason = state.revealReason || "time";
+
+    reveal.classList.remove("hidden", "is-win", "is-miss", "is-all");
+    answer.textContent = word;
+
+    if (reason === "all") {
+      reveal.classList.add("is-all");
+      eyebrow.textContent = "Everyone got it!";
+      title.textContent = amDrawer ? "Great drawing!" : "Squad wipe!";
+      sub.textContent = "That was the word";
+    } else if (amDrawer) {
+      reveal.classList.add(alreadyGuessed || (state.guessedIds || []).length ? "is-win" : "is-miss");
+      eyebrow.textContent = "Time's up";
+      title.textContent = (state.guessedIds || []).length ? "Round over" : "Nobody got it";
+      sub.textContent = "The answer is above";
+    } else if (alreadyGuessed) {
+      reveal.classList.add("is-win");
+      eyebrow.textContent = "Time's up";
+      title.textContent = "You got it right!";
+      sub.textContent = "Nice guess — that was the word";
+    } else {
+      reveal.classList.add("is-miss");
+      eyebrow.textContent = "Time's up";
+      title.textContent = "Wrong — you missed it";
+      sub.textContent = "Here's the actual answer";
+    }
+
+    this.playRevealFx(reason === "all" ? "all" : alreadyGuessed || amDrawer ? "soft" : "miss");
+  },
+
+  playRevealFx(kind) {
+    const board = document.querySelector(".canvas-wrap");
+    if (!board) return;
+    board.classList.remove("reveal-shake", "reveal-pulse");
+    void board.offsetWidth;
+    board.classList.add(kind === "miss" ? "reveal-shake" : "reveal-pulse");
+    clearTimeout(this._revealFxT);
+    this._revealFxT = setTimeout(() => {
+      board.classList.remove("reveal-shake", "reveal-pulse");
+    }, 700);
+  },
+
+  celebrateCorrect(fx) {
+    const isMe = fx.playerId === App.me?.id;
+    const burst = document.getElementById("correct-burst");
+    const title = document.getElementById("correct-burst-title");
+    const pts = document.getElementById("correct-burst-pts");
+    const bits = document.getElementById("correct-burst-bits");
+    if (!burst) return;
+
+    title.textContent = isMe ? "You got it!" : `${fx.name} got it!`;
+    pts.textContent = isMe
+      ? `+${fx.pts} pts`
+      : fx.drawerPts && fx.drawerId === App.me?.id
+        ? `Drawer +${fx.drawerPts}`
+        : `+${fx.pts}`;
+
+    bits.innerHTML = "";
+    const colors = ["#2ec4a6", "#ffd166", "#ef476f", "#118ab2", "#06d6a0", "#f4a261", "#fff"];
+    for (let i = 0; i < 28; i++) {
+      const bit = document.createElement("span");
+      bit.className = "burst-bit";
+      bit.style.setProperty("--dx", `${(Math.random() - 0.5) * 360}px`);
+      bit.style.setProperty("--dy", `${-40 - Math.random() * 220}px`);
+      bit.style.setProperty("--rot", `${(Math.random() - 0.5) * 720}deg`);
+      bit.style.background = colors[i % colors.length];
+      bit.style.left = `${40 + Math.random() * 20}%`;
+      bit.style.animationDelay = `${Math.random() * 0.08}s`;
+      bits.appendChild(bit);
+    }
+
+    burst.classList.remove("hidden", "is-me");
+    if (isMe) burst.classList.add("is-me");
+    void burst.offsetWidth;
+    burst.classList.add("pop");
+    document.body.classList.add("got-it-flash");
+
+    const list = document.getElementById("score-list");
+    list?.querySelectorAll("li").forEach((li) => {
+      if (li.querySelector("strong")?.textContent === fx.name) {
+        li.classList.add("score-pop");
+        setTimeout(() => li.classList.remove("score-pop"), 900);
+      }
+    });
+
+    clearTimeout(this._burstT);
+    this._burstT = setTimeout(() => {
+      burst.classList.add("hidden");
+      burst.classList.remove("pop", "is-me");
+      document.body.classList.remove("got-it-flash");
+    }, 1600);
+  },
+
   setTool(tool) {
     this.draw.setTool(tool);
     document.querySelectorAll(".tool[data-tool]").forEach((b) => {
@@ -510,9 +610,7 @@ const UI = {
           `${drawer?.name || "Drawer"} is choosing a word…`;
       }
     } else if (state.phase === PHASE.REVEAL) {
-      reveal.classList.remove("hidden");
-      document.getElementById("reveal-text").textContent =
-        `The word was “${state.secretWord || "???"}”`;
+      this.showReveal(state, amDrawer, alreadyGuessed);
     }
 
     // New turn → wipe board for everyone (backup if canvas-reset packet was missed)
