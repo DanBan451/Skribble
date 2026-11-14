@@ -120,8 +120,8 @@ const UI = {
     emoji.textContent = t.emoji;
     const isHost = App.net?.isHost;
     text.textContent = isHost
-      ? `${name} — friends who join will see this same vibe`
-      : `${name} — you're in this room's vibe with everyone`;
+      ? `${name} — everyone who Plays sees this same vibe`
+      : `${name} — same vibe for everyone in the game`;
   },
 
   rollTheme() {
@@ -422,7 +422,7 @@ const UI = {
     });
     document.getElementById("player-count").textContent = `(${players.length})`;
     document.getElementById("lobby-wait").textContent = players.length < 2
-      ? "Solo ok for testing — or share the invite link for friends!"
+      ? "Solo ok for testing — friends just open the same site and hit Play."
       : isHost ? "Ready when you are — hit Start!" : "Waiting for host to start…";
 
     const panel = document.getElementById("settings-panel");
@@ -431,9 +431,9 @@ const UI = {
     document.getElementById("btn-start").textContent = players.length < 2 ? "Start solo test" : "Start game";
     document.getElementById("host-note").textContent = isHost
       ? (players.length < 2
-        ? "Solo test mode is on. Invite friends when you want real guessing."
+        ? "Solo test mode is on. Anyone who opens the site can join you."
         : "You are the host. Pick a vibe, then start when ready.")
-      : "You're in the lobby — relax, chat vibes show for everyone. Host starts the game.";
+      : "You're in the lobby — vibe updates for everyone. Host starts the game.";
     this.updateWordCountLabel();
     this.updateVibeBanner(getTheme(this.themeId), this.themeTitle);
   },
@@ -450,7 +450,7 @@ const UI = {
       this.showScreen("screen-lobby");
       this.writeSettings(state.settings);
       this.renderLobby(state.players, App.net.isHost);
-      document.getElementById("room-code-display").textContent = state.roomCode;
+      document.getElementById("room-code-display").textContent = "OPEN";
       return;
     }
 
@@ -461,7 +461,7 @@ const UI = {
     }
 
     this.showScreen("screen-game");
-    document.getElementById("game-room-code").textContent = state.roomCode;
+    document.getElementById("game-room-code").textContent = "";
     const theme = getTheme(state.settings.themeId || "classic");
     document.getElementById("game-theme-chip").textContent =
       `${theme.emoji} ${state.settings.themeTitle || theme.name}`;

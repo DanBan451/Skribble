@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skribble — Draw & Guess</title>
-  <meta name="description" content="Multiplayer drawing and guessing game with themes, custom words, and invite rooms." />
+  <meta name="description" content="Multiplayer drawing and guessing game. Open the site, hit Play, doodle together." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
@@ -22,7 +22,7 @@
       <header class="brand">
         <h1 class="logo">Skribble</h1>
         <p class="tagline">Draw it. Guess it. Own the podium.</p>
-        <p class="hint brand-extra">Create a room, invite friends, pick a vibe, and doodle.</p>
+        <p class="hint brand-extra">Open the site, hit Play, doodle with whoever’s here.</p>
       </header>
 
       <div class="home-panel">
@@ -70,22 +70,9 @@
           </div>
         </div>
 
-        <div id="invite-banner" class="invite-banner hidden">
-          <p>You're invited!</p>
-          <p class="hint">Enter a name above, then join — no code needed.</p>
-          <button type="button" class="btn btn-primary" id="btn-join-invite">Join room</button>
-        </div>
-
         <div class="home-actions" id="home-host-actions">
-          <button type="button" class="btn btn-primary" id="btn-create">Create Private Room</button>
-          <p class="hint home-join-hint">Share the invite <em>link</em> with friends. Keep your tab open while you play.</p>
-          <details class="advanced-join" id="manual-join-row">
-            <summary>Have a code instead?</summary>
-            <div class="join-row">
-              <input id="join-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" />
-              <button type="button" class="btn btn-secondary" id="btn-join">Join</button>
-            </div>
-          </details>
+          <button type="button" class="btn btn-primary" id="btn-play">Play</button>
+          <p class="hint home-join-hint">Everyone who opens this site joins the same game. No codes. Refresh is fine — just hit Play again.</p>
         </div>
       </div>
     </div>
@@ -97,8 +84,8 @@
       <header class="lobby-top">
         <div class="logo-sm">Skribble</div>
         <div class="room-invite">
-          <button type="button" class="btn btn-tiny" id="btn-copy-invite">Copy invite link</button>
-          <span class="invite-code-soft">room <strong id="room-code-display">------</strong></span>
+          <button type="button" class="btn btn-tiny" id="btn-copy-invite">Copy site link</button>
+          <span class="invite-code-soft"><strong id="room-code-display">OPEN</strong> — anyone can join</span>
         </div>
       </header>
 
@@ -111,7 +98,7 @@
         <aside class="players-panel">
           <h2>Players <span id="player-count">(1)</span></h2>
           <ul id="lobby-players" class="player-list"></ul>
-          <p class="hint" id="lobby-wait">Waiting for friends… share the invite link!</p>
+          <p class="hint" id="lobby-wait">Waiting for friends… anyone who opens the site can Play and land here.</p>
         </aside>
 
         <div class="settings-panel" id="settings-panel">
