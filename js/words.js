@@ -189,15 +189,21 @@ function pickConcepts(pool, count, used = new Set()) {
 }
 
 function wordBlank(word, revealed = []) {
-  return String(word)
-    .split("")
-    .map((ch, i) => {
-      if (ch === " ") return " ";
-      if (ch === "-" || ch === "'") return ch;
-      if (revealed.includes(i)) return ch.toUpperCase();
-      return "_";
-    })
-    .join(" ");
+  const parts = [];
+  for (let i = 0; i < String(word).length; i++) {
+    const ch = word[i];
+    if (ch === " ") {
+      // Clear gap between words (won't collapse with white-space: pre-wrap)
+      parts.push("\u00A0\u00A0");
+      continue;
+    }
+    if (ch === "-" || ch === "'") {
+      parts.push(ch);
+      continue;
+    }
+    parts.push(revealed.includes(i) ? ch.toUpperCase() : "_");
+  }
+  return parts.join(" ");
 }
 
 function isCloseGuess(guess, concept) {

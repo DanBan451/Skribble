@@ -1117,6 +1117,8 @@ body.theme-dark .theme-card {
   letter-spacing: 0.18em;
   font-weight: 700;
   text-align: center;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .game-room {
