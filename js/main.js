@@ -17,9 +17,14 @@ const App = {
       this.joinRoom(code);
     };
     document.getElementById("btn-join-invite").onclick = () => {
-      const code = document.getElementById("join-code").value.trim();
+      const code = (this.pendingInvite || document.getElementById("join-code").value).trim();
       this.joinRoom(code);
     };
+    document.getElementById("player-name").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && this.pendingInvite) {
+        this.joinRoom(this.pendingInvite);
+      }
+    });
     document.getElementById("join-code").addEventListener("keydown", (e) => {
       if (e.key === "Enter") document.getElementById("btn-join").click();
     });
@@ -37,18 +42,22 @@ const App = {
     const params = new URLSearchParams(location.search);
     const room = (params.get("room") || "").trim().toUpperCase();
     if (!room) return;
+    this.pendingInvite = room;
     document.getElementById("join-code").value = room;
-    document.getElementById("invite-banner-code").textContent = room;
     document.getElementById("invite-banner").classList.remove("hidden");
-    document.getElementById("btn-create").classList.add("hidden");
-    UI.toast(`Room ${room} — enter a name, then Join this room`);
+    document.getElementById("home-host-actions")?.classList.add("hidden");
+    const saved = localStorage.getItem("skribble-name") || "";
+    if (saved) document.getElementById("player-name").value = saved;
+    UI.toast("You're invited — pick a face, then Join");
     document.getElementById("player-name").focus();
   },
 
   makeMe(isHost) {
+    const name = UI.getName();
+    try { localStorage.setItem("skribble-name", name); } catch (_) { /* ignore */ }
     this.me = {
       id: this.net.playerId,
-      name: UI.getName(),
+      name,
       avatar: UI.getAvatar(),
       isHost,
       score: 0,
@@ -155,7 +164,7 @@ const App = {
       }
 
       if (data.type === "choose-word") {
-        const player = this.game.findByPeer(conn.peer) || this.game.players.get(this.me.id);
+        const player = this.game.findByPeer(conn.peer);
         if (player && player.id === this.game.getDrawer()?.id) {
           this.game.chooseWord(data.wordId || data.word);
         }
@@ -163,8 +172,11 @@ const App = {
       }
 
       if (data.type === "guess") {
-        const player = this.game.findByPeer(conn.peer);
-        if (player) this.game.handleGuess(player.id, data.text);
+        const byPeer = this.game.findByPeer(conn.peer);
+        // Only credit the player tied to this connection (never fall back to host)
+        if (!byPeer) return;
+        if (data.playerId && data.playerId !== byPeer.id) return;
+        this.game.handleGuess(byPeer.id, data.text);
         return;
       }
 
@@ -195,6 +207,11 @@ const App = {
 
     if (data.type === "state") {
       this.game.applyRemoteState(data);
+      return;
+    }
+
+    if (data.type === "canvas-reset") {
+      UI.resetCanvas(data.turnKey);
       return;
     }
 
@@ -253,7 +270,7 @@ const App = {
     if (this.net.isHost) {
       this.game.handleGuess(this.me.id, text);
     } else {
-      this.net.send({ type: "guess", text });
+      this.net.send({ type: "guess", text, playerId: this.me.id });
     }
   },
 
@@ -297,8 +314,9 @@ const App = {
     this.me = null;
     UI.clearChat();
     UI.showScreen("screen-home");
+    this.pendingInvite = null;
     document.getElementById("invite-banner").classList.add("hidden");
-    document.getElementById("btn-create").classList.remove("hidden");
+    document.getElementById("home-host-actions")?.classList.remove("hidden");
     if (updateUrl) {
       history.replaceState(null, "", location.pathname.replace(/\/?$/, "/"));
     }

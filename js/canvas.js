@@ -68,7 +68,10 @@ class DrawCanvas {
     this.last = p;
   };
 
-  onPointerUp = () => {
+  onPointerUp = (e) => {
+    try {
+      if (e?.pointerId != null) this.canvas.releasePointerCapture(e.pointerId);
+    } catch (_) { /* ignore */ }
     if (!this.drawing) return;
     this.drawing = false;
     this.last = null;
@@ -101,8 +104,16 @@ class DrawCanvas {
 
   setEnabled(on) {
     this.enabled = on;
+    this.drawing = false;
+    this.last = null;
+    this._remoteLast = null;
     this.canvas.style.cursor = on ? "crosshair" : "default";
+    this.canvas.style.pointerEvents = on ? "auto" : "auto";
     if (on) this.bindEvents();
+    // Release any stuck pointer capture so chat/inputs stay clickable
+    try {
+      if (this.canvas.hasPointerCapture?.(1)) this.canvas.releasePointerCapture(1);
+    } catch (_) { /* ignore */ }
   }
 
   emit(stroke) {

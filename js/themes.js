@@ -23,8 +23,8 @@ const THEMES = [
     blurb: "Rain, kanji glow, midnight pink",
     tags: ["city", "night", "tech"],
     style: {
-      "--ink": "#f8e9ff",
-      "--ink-soft": "#d7b6ef",
+      "--ink": "#ffeefe",
+      "--ink-soft": "#f0d7ff",
       "--mint": "#ff4ecd",
       "--mint-deep": "#c2189a",
       "--sun": "#ffe566",
@@ -40,8 +40,8 @@ const THEMES = [
     blurb: "Kelp forests & bioluminescence",
     tags: ["ocean", "animals", "nature"],
     style: {
-      "--ink": "#e8fffb",
-      "--ink-soft": "#9ad5cb",
+      "--ink": "#f2fffc",
+      "--ink-soft": "#c9fff3",
       "--mint": "#2de2c5",
       "--mint-deep": "#14919b",
       "--sun": "#ffd166",
@@ -91,8 +91,8 @@ const THEMES = [
     blurb: "Planets, rockets, weird aliens",
     tags: ["space", "fantasy", "tech"],
     style: {
-      "--ink": "#eef2ff",
-      "--ink-soft": "#b8c1ec",
+      "--ink": "#f4f6ff",
+      "--ink-soft": "#d7ddff",
       "--mint": "#7c5cff",
       "--mint-deep": "#5a3fd6",
       "--sun": "#ffd166",
@@ -143,7 +143,7 @@ const THEMES = [
     tags: ["party", "tech", "everyday"],
     style: {
       "--ink": "#fff7ed",
-      "--ink-soft": "#ffd6a5",
+      "--ink-soft": "#ffe2b8",
       "--mint": "#ff5400",
       "--mint-deep": "#ff006e",
       "--sun": "#ffbe0b",
@@ -180,6 +180,19 @@ function getTheme(id) {
   return THEMES.find((t) => t.id === id) || THEMES[0];
 }
 
+const THEME_MOTIFS = {
+  classic: ["✏️", "⭐", "🎨", "🖌️"],
+  "neon-tokyo": ["🌃", "💜", "✨", "🎌", "💧"],
+  "ocean-deep": ["🐙", "🐠", "🫧", "🌊", "🐚"],
+  "candy-chaos": ["🍬", "🍭", "🍩", "✨", "🍓"],
+  "forest-folklore": ["🦊", "🍄", "🍃", "🦉", "✨"],
+  "cosmic-doodle": ["🚀", "🪐", "⭐", "👽", "☄️"],
+  "desert-mirage": ["🌵", "☀️", "🦂", "🏜️", "✨"],
+  "winter-fairy": ["❄️", "🎄", "⛄", "✨", "🧊"],
+  "arcade-lava": ["🕹️", "🔥", "👾", "💥", "⭐"],
+  "kitchen-chaos": ["🍳", "🧂", "🧀", "🔥", "🥄"]
+};
+
 function applyTheme(id) {
   const theme = getTheme(id);
   const root = document.documentElement;
@@ -193,7 +206,40 @@ function applyTheme(id) {
   document.body.dataset.theme = theme.id;
   const dark = ["neon-tokyo", "ocean-deep", "cosmic-doodle", "arcade-lava"].includes(theme.id);
   document.body.classList.toggle("theme-dark", dark);
+  const onHome = document.getElementById("screen-home")?.classList.contains("active");
+  spawnThemeFx(theme.id, { active: !onHome });
   return theme;
+}
+
+function clearThemeFx() {
+  const layer = document.getElementById("theme-fx");
+  if (layer) layer.innerHTML = "";
+}
+
+function spawnThemeFx(themeId, { active = true } = {}) {
+  const layer = document.getElementById("theme-fx");
+  if (!layer) return;
+  layer.innerHTML = "";
+  if (!active) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+  const motifs = THEME_MOTIFS[themeId] || THEME_MOTIFS.classic;
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("span");
+    el.className = "fx-bit";
+    el.textContent = motifs[i % motifs.length];
+    el.style.left = `${6 + (i * 11) % 88}%`;
+    el.style.top = `${72 + (i % 4) * 6}%`;
+    el.style.animationDuration = `${22 + (i % 5) * 4}s`;
+    el.style.animationDelay = `${i * 1.4}s`;
+    el.style.fontSize = `${1.35 + (i % 3) * 0.3}rem`;
+    el.style.setProperty("--drift", `${(i % 2 === 0 ? 1 : -1) * (14 + (i % 4) * 7)}px`);
+    layer.appendChild(el);
+  }
+  // Soft atmospheric wash for immersion
+  layer.style.setProperty("--wash", "1");
 }
 
 function randomThemeId(excludeId) {

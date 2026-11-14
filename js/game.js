@@ -105,7 +105,8 @@ class SkribbleGame {
         : null,
       guessedIds: Array.from(this.guessedIds),
       endsAt: this.endsAt,
-      roomCode: this.net.roomCode
+      roomCode: this.net.roomCode,
+      turnKey: this.turnKey || `${this.round}-${this.drawerIndex}`
     };
   }
 
@@ -149,9 +150,12 @@ class SkribbleGame {
 
   hostStart() {
     if (!this.net.isHost) return;
-    if (this.players.size < 2) {
-      this.ui.toast("Need at least 2 players to start.");
+    if (this.players.size < 1) {
+      this.ui.toast("No players in the room.");
       return;
+    }
+    if (this.players.size === 1) {
+      this.ui.toast("Solo test mode — draw practice (invite friends for real guessing).");
     }
     try {
       this.wordPool = buildWordPool(this.settings);
@@ -178,8 +182,10 @@ class SkribbleGame {
     this.turnScores = new Map();
     this.phase = PHASE.CHOOSING;
     this.endsAt = Date.now() + 15000;
-    this.broadcastState();
+    this.turnKey = `${this.round}:${this.drawerIndex}:${Date.now()}`;
     this.ui.resetCanvas();
+    this.net.broadcast({ type: "canvas-reset", turnKey: this.turnKey });
+    this.broadcastState();
     this.ui.systemChat(`${this.getDrawer()?.name || "Someone"} is choosing a word…`);
 
     this.timerId = setTimeout(() => {
@@ -201,6 +207,9 @@ class SkribbleGame {
     this.phase = PHASE.DRAWING;
     this.endsAt = Date.now() + this.settings.drawTime * 1000;
     this.clearTimers();
+    // Fresh page for everyone when drawing starts
+    this.ui.resetCanvas();
+    this.net.broadcast({ type: "canvas-reset", turnKey: this.turnKey });
     this.broadcastState();
     this.ui.systemChat(`${this.getDrawer()?.name} is drawing!`);
     this.scheduleHints();
@@ -241,14 +250,18 @@ class SkribbleGame {
       this.turnScores.set(playerId, pts);
 
       const drawer = this.getDrawer();
-      if (drawer) {
-        const drawerPts = Math.round(pts * 0.4);
+      let drawerPts = 0;
+      if (drawer && drawer.id !== playerId) {
+        drawerPts = Math.round(pts * 0.35);
         drawer.score += drawerPts;
         this.turnScores.set(drawer.id, (this.turnScores.get(drawer.id) || 0) + drawerPts);
       }
 
-      this.ui.systemChat(`${player.name} guessed the word! (+${pts})`);
-      this.net.broadcast({ type: "chat", kind: "correct", text: `${player.name} guessed the word!` });
+      const msg = drawerPts
+        ? `${player.name} got it! +${pts}  ·  drawer +${drawerPts}`
+        : `${player.name} got it! +${pts}`;
+      this.ui.systemChat(msg);
+      this.net.broadcast({ type: "chat", kind: "correct", text: msg });
       this.broadcastState();
 
       const guessers = this.getPlayers().filter((p) => p.id !== drawer?.id);

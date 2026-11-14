@@ -14,6 +14,7 @@
 <body data-theme="classic">
   <div class="bg-noise" aria-hidden="true"></div>
   <div class="bg-motif" aria-hidden="true"></div>
+  <div id="theme-fx" class="theme-fx" aria-hidden="true"></div>
 
   <!-- HOME -->
   <section id="screen-home" class="screen active">
@@ -21,6 +22,7 @@
       <header class="brand">
         <h1 class="logo">Skribble</h1>
         <p class="tagline">Draw it. Guess it. Own the podium.</p>
+        <p class="hint brand-extra">Create a room, invite friends, pick a vibe, and doodle.</p>
       </header>
 
       <div class="home-panel">
@@ -69,17 +71,21 @@
         </div>
 
         <div id="invite-banner" class="invite-banner hidden">
-          <p>You're invited to room <strong id="invite-banner-code">------</strong></p>
-          <button type="button" class="btn btn-primary" id="btn-join-invite">Join this room</button>
+          <p>You're invited!</p>
+          <p class="hint">Enter a name above, then join — no code needed.</p>
+          <button type="button" class="btn btn-primary" id="btn-join-invite">Join room</button>
         </div>
 
-        <div class="home-actions">
+        <div class="home-actions" id="home-host-actions">
           <button type="button" class="btn btn-primary" id="btn-create">Create Private Room</button>
-          <div class="join-row">
-            <input id="join-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" />
-            <button type="button" class="btn btn-secondary" id="btn-join">Join</button>
-          </div>
-          <p class="hint home-join-hint">Friends: open the invite link, enter a name, then tap Join. Host must keep their tab open.</p>
+          <p class="hint home-join-hint">Share the invite <em>link</em> with friends. Keep your tab open while you play.</p>
+          <details class="advanced-join" id="manual-join-row">
+            <summary>Have a code instead?</summary>
+            <div class="join-row">
+              <input id="join-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" />
+              <button type="button" class="btn btn-secondary" id="btn-join">Join</button>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -91,11 +97,15 @@
       <header class="lobby-top">
         <div class="logo-sm">Skribble</div>
         <div class="room-invite">
-          <span>Invite</span>
-          <strong id="room-code-display">------</strong>
-          <button type="button" class="btn btn-tiny" id="btn-copy-invite">Copy link</button>
+          <button type="button" class="btn btn-tiny" id="btn-copy-invite">Copy invite link</button>
+          <span class="invite-code-soft">room <strong id="room-code-display">------</strong></span>
         </div>
       </header>
+
+      <div class="vibe-banner" id="vibe-banner">
+        <span class="vibe-emoji" id="vibe-banner-emoji">✏️</span>
+        <span id="vibe-banner-text">Classic Sketch — everyone in this room shares this vibe</span>
+      </div>
 
       <div class="lobby-grid">
         <aside class="players-panel">
@@ -166,19 +176,23 @@
 
           <div class="word-ai-panel" id="word-ai-panel">
             <h3>Word wizard</h3>
-            <p class="hint">Tell the AI what kind of words you want, e.g. “scary movies” or “things in a kitchen”.</p>
+            <p class="hint">Describe a theme. It searches the web, then builds easy-to-draw words. Example: “Delta Junction Alaska” or “ocean animals”.</p>
             <div id="word-ai-log" class="word-ai-log"></div>
             <form id="word-ai-form" class="word-ai-form">
-              <input id="word-ai-input" type="text" maxlength="120" placeholder="Describe the words…" autocomplete="off" />
-              <button type="submit" class="btn btn-tiny" id="btn-word-ai">Ask</button>
+              <input id="word-ai-input" type="text" maxlength="160" placeholder="What kind of words? e.g. spooky halloween" autocomplete="off" />
+              <button type="submit" class="btn btn-tiny" id="btn-word-ai">Make list</button>
             </form>
+            <div class="word-ai-actions">
+              <button type="button" class="ghost-btn" id="btn-word-add">+ Add more like this</button>
+              <button type="button" class="ghost-btn" id="btn-word-clear">Clear list</button>
+            </div>
             <label class="field">
-              <span>Word list (editable)</span>
-              <textarea id="set-custom-words" rows="3" placeholder="pizza, skateboard, volcano, headphones, ..."></textarea>
+              <span>Word list (<span id="word-count-label">0</span>) — edit or delete any word</span>
+              <textarea id="set-custom-words" rows="4" placeholder="Your themed words will show up here…"></textarea>
             </label>
             <label class="check">
-              <input type="checkbox" id="set-custom-only" />
-              <span>Use these words only (min 10)</span>
+              <input type="checkbox" id="set-custom-only" checked />
+              <span>Use this list only (need at least 10 words)</span>
             </label>
           </div>
 

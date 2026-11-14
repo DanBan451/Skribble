@@ -12,6 +12,7 @@ const UI = {
   draw: null,
   tickId: null,
   lastState: null,
+  lastTurnKey: null,
 
   init() {
     this.draw = new DrawCanvas(document.getElementById("draw-canvas"));
@@ -23,7 +24,9 @@ const UI = {
     this.bindLobby();
     this.bindGame();
     this.bindResults();
+    document.body.dataset.screen = "screen-home";
     applyTheme(this.themeId);
+    clearThemeFx();
     window.addEventListener("resize", () => this.draw.resizeToDisplay());
   },
 
@@ -88,7 +91,21 @@ const UI = {
     document.querySelectorAll(".theme-card").forEach((c) => {
       c.classList.toggle("active", c.dataset.themeId === id);
     });
+    this.updateVibeBanner(theme, this.themeTitle);
     if (sync) this.syncSettings();
+  },
+
+  updateVibeBanner(theme, title) {
+    const t = theme || getTheme(this.themeId);
+    const name = title || this.themeTitle || t.name;
+    const emoji = document.getElementById("vibe-banner-emoji");
+    const text = document.getElementById("vibe-banner-text");
+    if (!emoji || !text) return;
+    emoji.textContent = t.emoji;
+    const isHost = App.net?.isHost;
+    text.textContent = isHost
+      ? `${name} — friends who join will see this same vibe`
+      : `${name} — you're in this room's vibe with everyone`;
   },
 
   rollTheme() {
@@ -133,37 +150,82 @@ const UI = {
     document.getElementById("btn-roll-theme").onclick = () => this.rollTheme();
     document.getElementById("word-ai-form").addEventListener("submit", (e) => {
       e.preventDefault();
-      this.askWordAi();
+      this.askWordAi("replace");
     });
+    document.getElementById("btn-word-add").onclick = () => this.askWordAi("add");
+    document.getElementById("btn-word-clear").onclick = () => this.clearWordList();
+    document.getElementById("set-custom-words").addEventListener("input", () => this.updateWordCountLabel());
   },
 
-  async askWordAi() {
+  lastWordTheme: "",
+
+  clearWordList() {
+    if (App.game && !App.net.isHost) {
+      this.toast("Only the host can change words.");
+      return;
+    }
+    document.getElementById("set-custom-words").value = "";
+    this.updateWordCountLabel();
+    this.addWordAiLine("bot", "List cleared. Describe a new theme whenever you’re ready.");
+    this.syncSettings();
+  },
+
+  updateWordCountLabel() {
+    const words = parseCustomWords(document.getElementById("set-custom-words").value);
+    document.getElementById("word-count-label").textContent = String(words.length);
+  },
+
+  async askWordAi(mode = "replace") {
     if (App.game && !App.net.isHost) {
       this.toast("Only the host can change words.");
       return;
     }
     const input = document.getElementById("word-ai-input");
-    const prompt = input.value.trim();
-    if (!prompt) return;
+    let prompt = input.value.trim();
+    const lower = prompt.toLowerCase();
+
+    // Chat-style clear / delete
+    if (/^(clear|delete|reset|start over|wipe|empty)(\s+.*)?$/.test(lower)) {
+      input.value = "";
+      this.addWordAiLine("you", prompt || "clear");
+      this.clearWordList();
+      return;
+    }
+
+    if (!prompt) {
+      if (mode === "add" && this.lastWordTheme) {
+        prompt = this.lastWordTheme;
+      } else {
+        this.toast("Describe the theme first, e.g. ocean animals");
+        input.focus();
+        return;
+      }
+    }
+
     input.value = "";
-    this.addWordAiLine("you", prompt);
-    this.addWordAiLine("bot", "Cooking up words…");
+    this.lastWordTheme = prompt;
+    this.addWordAiLine("you", mode === "add" ? `Add more: ${prompt}` : prompt);
+    const status = this.addWordAiLine("bot", "Searching the web, then picking easy draw words…");
     const btn = document.getElementById("btn-word-ai");
     btn.disabled = true;
     try {
       const words = await generateWordsFromPrompt(prompt);
       const box = document.getElementById("set-custom-words");
-      box.value = words.join(", ");
+      if (mode === "add") {
+        const existing = parseCustomWords(box.value).map((c) => c.word);
+        const merged = cleanWordList([...existing, ...words]);
+        box.value = merged.join(", ");
+        status.textContent = `Added more on-theme words — ${merged.length} total. Clear or describe a new theme anytime.`;
+      } else {
+        box.value = words.join(", ");
+        status.textContent = `Found easy words about “${prompt}” (${words.length}). Edit the list, add more, or clear.`;
+      }
       document.getElementById("set-custom-only").checked = true;
-      const log = document.getElementById("word-ai-log");
-      if (log.lastChild) log.lastChild.remove();
-      this.addWordAiLine("bot", `Got ${words.length} words. Custom-only is on — edit the list if you want, then Start.`);
+      this.updateWordCountLabel();
       this.syncSettings();
-      this.toast(`Loaded ${words.length} words`);
+      this.toast(`${words.length} easy themed words`);
     } catch (err) {
-      const log = document.getElementById("word-ai-log");
-      if (log.lastChild) log.lastChild.remove();
-      this.addWordAiLine("bot", err.message || "Could not generate words.");
+      status.textContent = err.message || "Could not generate words.";
     } finally {
       btn.disabled = false;
     }
@@ -176,6 +238,7 @@ const UI = {
     line.textContent = text;
     log.appendChild(line);
     log.scrollTop = log.scrollHeight;
+    return line;
   },
 
   syncSettings() {
@@ -271,6 +334,12 @@ const UI = {
   showScreen(id) {
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
+    document.body.dataset.screen = id;
+    if (id === "screen-home") {
+      clearThemeFx();
+    } else {
+      spawnThemeFx(this.themeId || "classic", { active: true });
+    }
     if (id === "screen-game") {
       requestAnimationFrame(() => this.draw.resizeToDisplay());
     }
@@ -337,15 +406,20 @@ const UI = {
     });
     document.getElementById("player-count").textContent = `(${players.length})`;
     document.getElementById("lobby-wait").textContent = players.length < 2
-      ? "Waiting for friends… share the invite link!"
+      ? "Solo ok for testing — or share the invite link for friends!"
       : isHost ? "Ready when you are — hit Start!" : "Waiting for host to start…";
 
     const panel = document.getElementById("settings-panel");
     panel.classList.toggle("is-guest", !isHost);
-    document.getElementById("btn-start").disabled = !isHost || players.length < 2;
+    document.getElementById("btn-start").disabled = !isHost || players.length < 1;
+    document.getElementById("btn-start").textContent = players.length < 2 ? "Start solo test" : "Start game";
     document.getElementById("host-note").textContent = isHost
-      ? "You are the host. Pick a vibe, then start when ready."
-      : "Only the host can change settings and start.";
+      ? (players.length < 2
+        ? "Solo test mode is on. Invite friends when you want real guessing."
+        : "You are the host. Pick a vibe, then start when ready.")
+      : "You're in the lobby — relax, chat vibes show for everyone. Host starts the game.";
+    this.updateWordCountLabel();
+    this.updateVibeBanner(getTheme(this.themeId), this.themeTitle);
   },
 
   applyState(state) {
@@ -425,23 +499,38 @@ const UI = {
         `The word was “${state.secretWord || "???"}”`;
     }
 
+    // New turn → wipe board for everyone (backup if canvas-reset packet was missed)
+    if (state.turnKey && state.turnKey !== this.lastTurnKey) {
+      this.resetCanvas(state.turnKey);
+    }
+
     const canDraw = amDrawer && state.phase === PHASE.DRAWING;
     document.getElementById("toolbar").classList.toggle("hidden", !canDraw);
     this.draw.setEnabled(canDraw);
 
     const chatInput = document.getElementById("chat-input");
+    const chatForm = document.getElementById("chat-form");
+    chatForm.classList.remove("blocked");
     if (amDrawer) {
       chatInput.disabled = true;
-      chatInput.placeholder = "You're drawing — no guessing!";
+      chatInput.placeholder = "You're drawing — friends type guesses here";
+      chatForm.classList.add("blocked");
     } else if (alreadyGuessed) {
       chatInput.disabled = true;
       chatInput.placeholder = "Nice! Waiting for others…";
+      chatForm.classList.add("blocked");
     } else if (state.phase !== PHASE.DRAWING) {
       chatInput.disabled = true;
-      chatInput.placeholder = "Waiting…";
+      chatInput.placeholder = "Waiting for the drawing…";
+      chatForm.classList.add("blocked");
     } else {
       chatInput.disabled = false;
+      chatInput.readOnly = false;
       chatInput.placeholder = "Type your guess…";
+      // Make sure guessers can actually click/type
+      requestAnimationFrame(() => {
+        try { chatInput.focus({ preventScroll: true }); } catch (_) { /* ignore */ }
+      });
     }
 
     this.renderScores(state.players, drawerId, state.guessedIds || []);
@@ -514,7 +603,8 @@ const UI = {
     this.tickId = setInterval(tick, 200);
   },
 
-  resetCanvas() {
+  resetCanvas(turnKey) {
+    if (turnKey) this.lastTurnKey = turnKey;
     this.draw.resetRound();
   },
 
