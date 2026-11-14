@@ -39,14 +39,30 @@ const UI = {
       btn.className = "color-swatch" + (i === 0 ? " active" : "");
       btn.style.background = color;
       btn.title = color;
-      btn.addEventListener("click", () => {
-        el.querySelectorAll(".color-swatch").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        this.draw.setColor(color);
-        if (this.draw.tool === "eraser") this.setTool("pen");
-      });
+      btn.addEventListener("click", () => this.pickPaletteColor(color, btn));
       el.appendChild(btn);
     });
+
+    const picker = document.getElementById("color-picker");
+    if (picker) {
+      picker.value = "#1a2a33";
+      picker.addEventListener("input", () => {
+        this.pickPaletteColor(picker.value, null);
+        picker.classList.add("active");
+      });
+    }
+  },
+
+  pickPaletteColor(color, btn) {
+    const el = document.getElementById("color-palette");
+    el.querySelectorAll(".color-swatch").forEach((b) => b.classList.remove("active"));
+    document.getElementById("color-picker")?.classList.remove("active");
+    if (btn) btn.classList.add("active");
+    else document.getElementById("color-picker")?.classList.add("active");
+    this.draw.setColor(color);
+    const picker = document.getElementById("color-picker");
+    if (picker && /^#([0-9a-f]{6})$/i.test(color)) picker.value = color;
+    if (this.draw.tool === "eraser") this.setTool("pen");
   },
 
   buildAvatarColors() {

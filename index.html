@@ -228,7 +228,7 @@
 
       <main class="canvas-panel">
         <div class="canvas-wrap">
-          <canvas id="draw-canvas" width="800" height="560"></canvas>
+          <canvas id="draw-canvas" width="960" height="672"></canvas>
           <div id="choose-overlay" class="overlay hidden">
             <p>Choose a word to draw</p>
             <div id="word-choices" class="word-choices"></div>
@@ -243,14 +243,18 @@
 
         <div id="toolbar" class="toolbar hidden">
           <div class="tool-group colors" id="color-palette"></div>
+          <label class="tool-group color-picker-wrap" title="Custom color">
+            <input type="color" id="color-picker" value="#1a2a33" aria-label="Custom color picker" />
+            <span>More</span>
+          </label>
           <div class="tool-group">
             <button type="button" class="tool active" data-tool="pen" title="Pen">✏️</button>
             <button type="button" class="tool" data-tool="eraser" title="Eraser">🧽</button>
             <button type="button" class="tool" data-tool="fill" title="Fill">🪣</button>
           </div>
           <div class="tool-group sizes">
-            <input type="range" id="pen-size" min="2" max="40" value="6" />
-            <span id="pen-size-label">6</span>
+            <input type="range" id="pen-size" min="2" max="48" value="8" />
+            <span id="pen-size-label">8</span>
           </div>
           <div class="tool-group">
             <button type="button" class="tool" id="btn-undo" title="Undo">↶</button>

@@ -1,10 +1,14 @@
+/** Shared logical board size — every player draws in this space. */
+const LOGICAL_W = 960;
+const LOGICAL_H = 672;
+
 class DrawCanvas {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d", { willReadFrequently: true });
     this.tool = "pen";
     this.color = "#1a2a33";
-    this.size = 6;
+    this.size = 8;
     this.drawing = false;
     this.last = null;
     this.history = [];
@@ -12,9 +16,21 @@ class DrawCanvas {
     this.enabled = false;
     this.onStroke = null;
     this._bound = false;
+    this._remoteLast = null;
 
-    this.resizeToDisplay();
-    this.clear(false);
+    this.ensureLogicalSize(true);
+  }
+
+  ensureLogicalSize(forceClear = false) {
+    if (this.canvas.width !== LOGICAL_W || this.canvas.height !== LOGICAL_H) {
+      this.canvas.width = LOGICAL_W;
+      this.canvas.height = LOGICAL_H;
+      forceClear = true;
+    }
+    if (forceClear) {
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    }
   }
 
   bindEvents() {
@@ -34,22 +50,27 @@ class DrawCanvas {
     const p = this.pos(e);
     if (this.tool === "fill") {
       this.snapshot();
-      this.floodFill(Math.floor(p.x), Math.floor(p.y), this.color);
-      this.emit({ type: "fill", x: Math.floor(p.x), y: Math.floor(p.y), color: this.color });
+      this.floodFill(Math.round(p.x), Math.round(p.y), this.color);
+      this.emit(this.packStroke({
+        type: "fill",
+        x: p.x,
+        y: p.y,
+        color: this.color
+      }));
       return;
     }
     this.drawing = true;
     this.last = p;
     this.snapshot();
     this.drawDot(p.x, p.y, this.strokeStyle(), this.size);
-    this.emit({
+    this.emit(this.packStroke({
       type: "start",
       x: p.x,
       y: p.y,
       color: this.strokeStyle(),
       size: this.size,
       tool: this.tool
-    });
+    }));
   };
 
   onPointerMove = (e) => {
@@ -57,14 +78,14 @@ class DrawCanvas {
     e.preventDefault();
     const p = this.pos(e);
     this.drawLine(this.last.x, this.last.y, p.x, p.y, this.strokeStyle(), this.size);
-    this.emit({
+    this.emit(this.packStroke({
       type: "move",
       x: p.x,
       y: p.y,
       color: this.strokeStyle(),
       size: this.size,
       tool: this.tool
-    });
+    }));
     this.last = p;
   };
 
@@ -84,9 +105,44 @@ class DrawCanvas {
 
   pos(e) {
     const rect = this.canvas.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
     return {
-      x: ((e.clientX - rect.left) / rect.width) * this.canvas.width,
-      y: ((e.clientY - rect.top) / rect.height) * this.canvas.height
+      x: ((e.clientX - rect.left) / w) * LOGICAL_W,
+      y: ((e.clientY - rect.top) / h) * LOGICAL_H
+    };
+  }
+
+  /** Pack normalized coords so any screen size can replay the stroke. */
+  packStroke(stroke) {
+    return {
+      ...stroke,
+      nx: stroke.x / LOGICAL_W,
+      ny: stroke.y / LOGICAL_H,
+      sizeN: stroke.size != null ? stroke.size / LOGICAL_W : undefined,
+      boardW: LOGICAL_W,
+      boardH: LOGICAL_H
+    };
+  }
+
+  unpackStroke(stroke) {
+    if (!stroke) return stroke;
+    if (typeof stroke.nx === "number" && typeof stroke.ny === "number") {
+      return {
+        ...stroke,
+        x: stroke.nx * LOGICAL_W,
+        y: stroke.ny * LOGICAL_H,
+        size: typeof stroke.sizeN === "number" ? stroke.sizeN * LOGICAL_W : stroke.size
+      };
+    }
+    // Legacy absolute coords from an older client — scale if board differed
+    const srcW = stroke.boardW || LOGICAL_W;
+    const srcH = stroke.boardH || LOGICAL_H;
+    return {
+      ...stroke,
+      x: (stroke.x / srcW) * LOGICAL_W,
+      y: (stroke.y / srcH) * LOGICAL_H,
+      size: stroke.size * (LOGICAL_W / srcW)
     };
   }
 
@@ -108,20 +164,16 @@ class DrawCanvas {
     this.last = null;
     this._remoteLast = null;
     this.canvas.style.cursor = on ? "crosshair" : "default";
-    this.canvas.style.pointerEvents = on ? "auto" : "auto";
     if (on) this.bindEvents();
-    // Release any stuck pointer capture so chat/inputs stay clickable
-    try {
-      if (this.canvas.hasPointerCapture?.(1)) this.canvas.releasePointerCapture(1);
-    } catch (_) { /* ignore */ }
   }
 
   emit(stroke) {
     if (typeof this.onStroke === "function") this.onStroke(stroke);
   }
 
-  applyStroke(stroke) {
-    if (!stroke) return;
+  applyStroke(raw) {
+    if (!raw) return;
+    const stroke = this.unpackStroke(raw);
     if (stroke.type === "start") {
       this.snapshot();
       this._remoteLast = { x: stroke.x, y: stroke.y };
@@ -140,11 +192,11 @@ class DrawCanvas {
       this._remoteLast = null;
     } else if (stroke.type === "fill") {
       this.snapshot();
-      this.floodFill(stroke.x, stroke.y, stroke.color);
+      this.floodFill(Math.round(stroke.x), Math.round(stroke.y), stroke.color);
     } else if (stroke.type === "clear") {
       this.snapshot();
       this.ctx.fillStyle = "#ffffff";
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
     } else if (stroke.type === "undo") {
       this.undo(false);
     }
@@ -154,14 +206,14 @@ class DrawCanvas {
     const ctx = this.ctx;
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.arc(x, y, Math.max(0.5, size / 2), 0, Math.PI * 2);
     ctx.fill();
   }
 
   drawLine(x1, y1, x2, y2, color, size) {
     const ctx = this.ctx;
     ctx.strokeStyle = color;
-    ctx.lineWidth = size;
+    ctx.lineWidth = Math.max(1, size);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -172,7 +224,7 @@ class DrawCanvas {
 
   snapshot() {
     try {
-      this.history.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
+      this.history.push(this.ctx.getImageData(0, 0, LOGICAL_W, LOGICAL_H));
       if (this.history.length > this.maxHistory) this.history.shift();
     } catch (_) {
       /* ignore */
@@ -193,7 +245,7 @@ class DrawCanvas {
   clear(emit = true) {
     if (emit) this.snapshot();
     this.ctx.fillStyle = "#ffffff";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
     if (emit) this.emit({ type: "clear" });
   }
 
@@ -202,50 +254,98 @@ class DrawCanvas {
     this._remoteLast = null;
     this.drawing = false;
     this.last = null;
-    this.clear(false);
+    this.ensureLogicalSize(true);
   }
 
+  /** Keep internal board fixed; CSS handles screen fit. */
   resizeToDisplay() {
-    const rect = this.canvas.getBoundingClientRect();
-    const w = Math.max(400, Math.floor(rect.width) || 800);
-    const h = Math.max(280, Math.floor(rect.height) || 560);
-    if (this.canvas.width !== w || this.canvas.height !== h) {
-      const prev = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-      this.canvas.width = w;
-      this.canvas.height = h;
-      this.ctx.fillStyle = "#ffffff";
-      this.ctx.fillRect(0, 0, w, h);
-      try {
-        this.ctx.putImageData(prev, 0, 0);
-      } catch (_) {
-        /* ignore */
-      }
-    }
+    this.ensureLogicalSize(false);
   }
 
+  /**
+   * Scanline flood fill with wider tolerance so anti-aliased stroke
+   * edges don't leave weird leftover outlines.
+   */
   floodFill(sx, sy, fillColor) {
     const ctx = this.ctx;
-    const { width, height } = this.canvas;
+    const width = LOGICAL_W;
+    const height = LOGICAL_H;
+    sx = Math.max(0, Math.min(width - 1, sx | 0));
+    sy = Math.max(0, Math.min(height - 1, sy | 0));
+
     const img = ctx.getImageData(0, 0, width, height);
     const data = img.data;
     const target = this.colorAt(data, sx, sy, width);
     const fill = this.hexToRgba(fillColor);
-    if (this.sameColor(target, fill)) return;
+    if (this.sameColor(target, fill, 4)) return;
 
-    const stack = [[sx, sy]];
-    const visited = new Uint8Array(width * height);
+    const match = (x, y) => this.sameColor(this.colorAt(data, x, y, width), target, 48);
+    const stack = [sy * width + sx];
+    const seen = new Uint8Array(width * height);
 
     while (stack.length) {
-      const [x, y] = stack.pop();
-      if (x < 0 || y < 0 || x >= width || y >= height) continue;
-      const i = y * width + x;
-      if (visited[i]) continue;
-      visited[i] = 1;
-      if (!this.sameColor(this.colorAt(data, x, y, width), target)) continue;
-      this.setColorAt(data, x, y, width, fill);
-      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      const id = stack.pop();
+      const x0 = id % width;
+      let y = (id / width) | 0;
+      let x = x0;
+
+      // move left
+      while (x >= 0 && !seen[y * width + x] && match(x, y)) x--;
+      x++;
+
+      let spanUp = false;
+      let spanDown = false;
+      while (x < width && !seen[y * width + x] && match(x, y)) {
+        const i = y * width + x;
+        seen[i] = 1;
+        this.setColorAt(data, x, y, width, fill);
+
+        if (y > 0) {
+          const up = (y - 1) * width + x;
+          if (!seen[up] && match(x, y - 1)) {
+            if (!spanUp) {
+              stack.push(up);
+              spanUp = true;
+            }
+          } else spanUp = false;
+        }
+        if (y < height - 1) {
+          const down = (y + 1) * width + x;
+          if (!seen[down] && match(x, y + 1)) {
+            if (!spanDown) {
+              stack.push(down);
+              spanDown = true;
+            }
+          } else spanDown = false;
+        }
+        x++;
+      }
     }
+
+    // Second pass: clean thin anti-aliased fringes next to filled pixels
+    this.cleanFillFringes(data, width, height, fill, target);
     ctx.putImageData(img, 0, 0);
+  }
+
+  cleanFillFringes(data, width, height, fill, target) {
+    const fringe = [];
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const c = this.colorAt(data, x, y, width);
+        if (this.sameColor(c, fill, 4)) continue;
+        // Near the original region color (anti-aliased edge) and touching fill
+        if (!this.sameColor(c, target, 90)) continue;
+        let touchesFill = false;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (this.sameColor(this.colorAt(data, x + dx, y + dy, width), fill, 4)) {
+            touchesFill = true;
+            break;
+          }
+        }
+        if (touchesFill) fringe.push([x, y]);
+      }
+    }
+    fringe.forEach(([x, y]) => this.setColorAt(data, x, y, width, fill));
   }
 
   colorAt(data, x, y, width) {
@@ -261,11 +361,10 @@ class DrawCanvas {
     data[i + 3] = rgba[3];
   }
 
-  sameColor(a, b) {
-    return Math.abs(a[0] - b[0]) < 8 &&
-      Math.abs(a[1] - b[1]) < 8 &&
-      Math.abs(a[2] - b[2]) < 8 &&
-      Math.abs(a[3] - b[3]) < 8;
+  sameColor(a, b, tol = 32) {
+    return Math.abs(a[0] - b[0]) <= tol &&
+      Math.abs(a[1] - b[1]) <= tol &&
+      Math.abs(a[2] - b[2]) <= tol;
   }
 
   hexToRgba(hex) {
@@ -281,8 +380,18 @@ class DrawCanvas {
 }
 
 const PALETTE = [
-  "#1a2a33", "#ffffff", "#ff6b5a", "#ffc857", "#2ec4a6",
-  "#4ea8de", "#7bdff2", "#b388eb", "#90be6d", "#f9844a",
-  "#c1121f", "#fb8500", "#023e8a", "#6d6875", "#adb5bd",
-  "#ffe8d6", "#ffb703", "#40916c", "#9b2226", "#22223b"
+  // neutrals
+  "#000000", "#1a2a33", "#4a5568", "#718096", "#a0aec0", "#e2e8f0", "#ffffff",
+  // reds / pinks
+  "#c1121f", "#e5383b", "#ff6b5a", "#ff85a1", "#f72585",
+  // oranges / yellows
+  "#fb8500", "#ff9f1c", "#ffc857", "#ffd60a", "#ffe566",
+  // greens
+  "#2d6a4f", "#40916c", "#2ec4a6", "#80ed99", "#b7e4c7",
+  // blues
+  "#023e8a", "#0077b6", "#4ea8de", "#48cae4", "#90e0ef",
+  // purples / browns
+  "#5a189a", "#7b2cbf", "#b388eb", "#7f5539", "#b08968",
+  // extras
+  "#22223b", "#9b2226", "#f9844a", "#90be6d", "#577590"
 ];

@@ -1159,7 +1159,10 @@ body.theme-dark .theme-card {
 .canvas-wrap {
   position: relative;
   flex: 1;
-  min-height: min(62vh, 720px);
+  width: 100%;
+  aspect-ratio: 960 / 672;
+  max-height: min(68vh, 720px);
+  min-height: 280px;
   overflow: hidden;
   background: #fff;
 }
@@ -1171,6 +1174,8 @@ body.theme-dark .theme-card {
   cursor: crosshair;
   touch-action: none;
   background: #ffffff;
+  /* Internal pixels stay 960×672 for every player */
+  image-rendering: auto;
 }
 
 .overlay {
@@ -1234,9 +1239,44 @@ body.theme-dark .word-choices button {
   align-items: center;
   gap: 0.55rem;
   padding: 0.55rem;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 14px;
   border: 1px solid var(--line);
+  color: #142028;
+}
+
+.tool-group.colors {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: min(100%, 420px);
+  gap: 0.28rem;
+  max-height: 64px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.color-picker-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #142028;
+  cursor: pointer;
+}
+
+.color-picker-wrap input[type="color"] {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid rgba(20, 32, 40, 0.25);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.color-picker-wrap input[type="color"].active {
+  box-shadow: 0 0 0 2px #142028;
 }
 
 .toolbar.hidden {
