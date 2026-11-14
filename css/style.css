@@ -746,24 +746,82 @@ textarea {
   font-weight: 700;
 }
 
-.fair-note {
-  margin: -0.35rem 0 1rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ink-soft);
+.invite-banner {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(46, 196, 166, 0.2), rgba(255, 200, 87, 0.25));
+  border: 2px solid var(--mint);
+  text-align: center;
+}
+
+.invite-banner p {
+  margin: 0 0 0.65rem;
+  font-weight: 700;
+}
+
+.invite-banner.hidden,
+.btn.hidden {
+  display: none !important;
+}
+
+.home-join-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
   line-height: 1.35;
 }
 
-.advanced {
+.word-ai-panel {
   margin: 0.25rem 0 1rem;
-  border: 1px dashed var(--line);
-  border-radius: 12px;
-  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.35);
 }
 
-.advanced summary {
-  cursor: pointer;
-  font-weight: 800;
+.word-ai-panel h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.word-ai-log {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.55rem 0;
+}
+
+.word-ai-line {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.word-ai-line.you {
+  align-self: flex-end;
+  background: rgba(46, 196, 166, 0.2);
+}
+
+.word-ai-line.bot {
+  align-self: flex-start;
+  background: rgba(255, 200, 87, 0.25);
+}
+
+.word-ai-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+body.theme-dark .word-ai-panel,
+body.theme-dark .word-ai-line {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .word-display.drawer-word {

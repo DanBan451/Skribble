@@ -16,6 +16,10 @@ const App = {
       const code = document.getElementById("join-code").value.trim();
       this.joinRoom(code);
     };
+    document.getElementById("btn-join-invite").onclick = () => {
+      const code = document.getElementById("join-code").value.trim();
+      this.joinRoom(code);
+    };
     document.getElementById("join-code").addEventListener("keydown", (e) => {
       if (e.key === "Enter") document.getElementById("btn-join").click();
     });
@@ -31,11 +35,14 @@ const App = {
 
   maybeJoinFromUrl() {
     const params = new URLSearchParams(location.search);
-    const room = params.get("room");
-    if (room) {
-      document.getElementById("join-code").value = room.toUpperCase();
-      UI.toast(`Room ${room.toUpperCase()} ready — enter your name and Join!`);
-    }
+    const room = (params.get("room") || "").trim().toUpperCase();
+    if (!room) return;
+    document.getElementById("join-code").value = room;
+    document.getElementById("invite-banner-code").textContent = room;
+    document.getElementById("invite-banner").classList.remove("hidden");
+    document.getElementById("btn-create").classList.add("hidden");
+    UI.toast(`Room ${room} — enter a name, then Join this room`);
+    document.getElementById("player-name").focus();
   },
 
   makeMe(isHost) {
@@ -261,9 +268,9 @@ const App = {
   copyInvite() {
     const code = this.net?.roomCode;
     if (!code) return;
-    const url = `${location.origin}${location.pathname}?room=${code}`;
+    const url = inviteUrlForRoom(code);
     navigator.clipboard.writeText(url).then(
-      () => UI.toast("Invite link copied!"),
+      () => UI.toast("Invite link copied! Host must keep this tab open."),
       () => UI.toast(`Share code: ${code}`)
     );
   },
@@ -290,7 +297,11 @@ const App = {
     this.me = null;
     UI.clearChat();
     UI.showScreen("screen-home");
-    if (updateUrl) history.replaceState(null, "", location.pathname);
+    document.getElementById("invite-banner").classList.add("hidden");
+    document.getElementById("btn-create").classList.remove("hidden");
+    if (updateUrl) {
+      history.replaceState(null, "", location.pathname.replace(/\/?$/, "/"));
+    }
   }
 };
 

@@ -173,7 +173,7 @@ const THEMES = [
 
 const THEME_NAME_BITS = {
   adjectives: ["Mysterious", "Spicy", "Glitchy", "Sleepy", "Electric", "Haunted", "Butter", "Velvet", "Chaotic", "Tiny", "Gigantic", "Secret"],
-  nouns: ["Noodles", "Comets", "Frogs", "Subway", "Pillowfort", "Volcano", "Disco", "Library", "Spaceship", "Borscht", "Wizardry", "Traffic"]
+  nouns: ["Noodles", "Comets", "Frogs", "Subway", "Pillowfort", "Volcano", "Disco", "Library", "Spaceship", "Wizardry", "Traffic", "Cactus"]
 };
 
 function getTheme(id) {

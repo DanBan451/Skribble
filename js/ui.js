@@ -131,6 +131,51 @@ const UI = {
         if (el.tagName === "TEXTAREA") el.addEventListener("blur", sync);
       });
     document.getElementById("btn-roll-theme").onclick = () => this.rollTheme();
+    document.getElementById("word-ai-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.askWordAi();
+    });
+  },
+
+  async askWordAi() {
+    if (App.game && !App.net.isHost) {
+      this.toast("Only the host can change words.");
+      return;
+    }
+    const input = document.getElementById("word-ai-input");
+    const prompt = input.value.trim();
+    if (!prompt) return;
+    input.value = "";
+    this.addWordAiLine("you", prompt);
+    this.addWordAiLine("bot", "Cooking up words…");
+    const btn = document.getElementById("btn-word-ai");
+    btn.disabled = true;
+    try {
+      const words = await generateWordsFromPrompt(prompt);
+      const box = document.getElementById("set-custom-words");
+      box.value = words.join(", ");
+      document.getElementById("set-custom-only").checked = true;
+      const log = document.getElementById("word-ai-log");
+      if (log.lastChild) log.lastChild.remove();
+      this.addWordAiLine("bot", `Got ${words.length} words. Custom-only is on — edit the list if you want, then Start.`);
+      this.syncSettings();
+      this.toast(`Loaded ${words.length} words`);
+    } catch (err) {
+      const log = document.getElementById("word-ai-log");
+      if (log.lastChild) log.lastChild.remove();
+      this.addWordAiLine("bot", err.message || "Could not generate words.");
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  addWordAiLine(who, text) {
+    const log = document.getElementById("word-ai-log");
+    const line = document.createElement("div");
+    line.className = "word-ai-line " + who;
+    line.textContent = text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
   },
 
   syncSettings() {

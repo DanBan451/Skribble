@@ -68,12 +68,18 @@
           </div>
         </div>
 
+        <div id="invite-banner" class="invite-banner hidden">
+          <p>You're invited to room <strong id="invite-banner-code">------</strong></p>
+          <button type="button" class="btn btn-primary" id="btn-join-invite">Join this room</button>
+        </div>
+
         <div class="home-actions">
           <button type="button" class="btn btn-primary" id="btn-create">Create Private Room</button>
           <div class="join-row">
             <input id="join-code" type="text" maxlength="6" placeholder="ROOM CODE" autocomplete="off" />
             <button type="button" class="btn btn-secondary" id="btn-join">Join</button>
           </div>
+          <p class="hint home-join-hint">Friends: open the invite link, enter a name, then tap Join. Host must keep their tab open.</p>
         </div>
       </div>
     </div>
@@ -158,17 +164,23 @@
             </label>
           </div>
 
-          <details class="advanced">
-            <summary>Custom words (optional)</summary>
+          <div class="word-ai-panel" id="word-ai-panel">
+            <h3>Word wizard</h3>
+            <p class="hint">Tell the AI what kind of words you want, e.g. “scary movies” or “things in a kitchen”.</p>
+            <div id="word-ai-log" class="word-ai-log"></div>
+            <form id="word-ai-form" class="word-ai-form">
+              <input id="word-ai-input" type="text" maxlength="120" placeholder="Describe the words…" autocomplete="off" />
+              <button type="submit" class="btn btn-tiny" id="btn-word-ai">Ask</button>
+            </form>
             <label class="field">
-              <span>Comma-separated English words</span>
+              <span>Word list (editable)</span>
               <textarea id="set-custom-words" rows="3" placeholder="pizza, skateboard, volcano, headphones, ..."></textarea>
             </label>
             <label class="check">
               <input type="checkbox" id="set-custom-only" />
-              <span>Use custom words only (min 10)</span>
+              <span>Use these words only (min 10)</span>
             </label>
-          </details>
+          </div>
 
           <div class="lobby-actions">
             <button type="button" class="btn btn-primary" id="btn-start" disabled>Start game</button>
@@ -266,6 +278,7 @@
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="js/themes.js"></script>
   <script src="js/words.js"></script>
+  <script src="js/wordai.js"></script>
   <script src="js/canvas.js"></script>
   <script src="js/net.js"></script>
   <script src="js/game.js"></script>

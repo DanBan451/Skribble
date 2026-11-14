@@ -10,7 +10,7 @@ Open the GitHub Pages site, pick a name, and **Create Private Room**. Share the 
 
 - Private rooms with invite links / codes
 - **Theme vibes** (Neon Tokyo, Cosmic Doodle, etc.) + **Roll a theme**
-- English word lists + custom words
+- **Word wizard**: describe the vibe and get an English word list
 - Custom word lists (optional custom-only mode)
 - Fun avatar studio (color, eyes, mouth, hat)
 - Room settings: rounds, draw time, word choices, hints
