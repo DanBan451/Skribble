@@ -128,15 +128,19 @@ const App = {
         this.game.addPlayer(player);
         const state = this.game.publicState();
         const isDrawer = player.id === state.drawerId;
+        const showSecret = isDrawer || this.game.phase === PHASE.REVEAL || this.game.phase === PHASE.RESULTS;
         this.net.sendTo(conn, {
           type: "welcome",
           yourId: player.id,
           state: {
             ...state,
-            secretWord: isDrawer || this.game.phase === PHASE.REVEAL || this.game.phase === PHASE.RESULTS
-              ? this.game.currentWord
+            secret: showSecret ? this.game.secretPayload() : null,
+            secretWord: showSecret
+              ? drawerLabel(this.game.currentConcept, this.game.settings.language)
               : null,
-            wordChoices: isDrawer && this.game.phase === PHASE.CHOOSING ? this.game.wordChoices : null
+            wordChoices: isDrawer && this.game.phase === PHASE.CHOOSING
+              ? this.game.wordChoices.map((c) => this.game.choicePayload(c))
+              : null
           }
         });
         UI.systemChat(`${player.name} joined!`);
@@ -148,7 +152,7 @@ const App = {
       if (data.type === "choose-word") {
         const player = this.game.findByPeer(conn.peer) || this.game.players.get(this.me.id);
         if (player && player.id === this.game.getDrawer()?.id) {
-          this.game.chooseWord(data.word);
+          this.game.chooseWord(data.wordId || data.word);
         }
         return;
       }
@@ -232,11 +236,11 @@ const App = {
     }
   },
 
-  chooseWord(word) {
+  chooseWord(wordId) {
     if (this.net.isHost) {
-      this.game.chooseWord(word);
+      this.game.chooseWord(wordId);
     } else {
-      this.net.send({ type: "choose-word", word });
+      this.net.send({ type: "choose-word", wordId });
     }
   },
 

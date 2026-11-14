@@ -9,7 +9,10 @@ Open the GitHub Pages site, pick a name, and **Create Private Room**. Share the 
 ### Features
 
 - Private rooms with invite links / codes
+- **Theme vibes** (Neon Tokyo, Cosmic Doodle, etc.) + **Roll a theme**
+- **Fair language mode**: English + Russian + Ukrainian all count as correct
 - Custom word lists (optional custom-only mode)
+- Fun avatar studio (color, eyes, mouth, hat)
 - Room settings: rounds, draw time, word choices, hints
 - Drawing tools: colors, pen size, fill bucket, eraser, undo, clear
 - Live guessing chat with close-guess hints

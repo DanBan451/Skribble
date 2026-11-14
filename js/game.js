@@ -18,18 +18,22 @@ class SkribbleGame {
       wordCount: 3,
       hints: 2,
       customWords: "",
-      customOnly: false
+      customOnly: false,
+      language: "fair",
+      themeId: "classic",
+      themeTitle: "Classic Sketch"
     };
     this.phase = PHASE.LOBBY;
     this.round = 1;
     this.drawerOrder = [];
     this.drawerIndex = 0;
-    this.currentWord = null;
+    this.currentConcept = null;
+    this.currentWord = null; // display form for blanks/hints
     this.wordChoices = [];
     this.revealedHints = [];
     this.guessedIds = new Set();
     this.usedWords = new Set();
-    this.wordPool = DEFAULT_WORDS.slice();
+    this.wordPool = CONCEPTS.slice();
     this.endsAt = 0;
     this.timerId = null;
     this.hintTimers = [];
@@ -65,8 +69,27 @@ class SkribbleGame {
     return d && d.id === this.me.id;
   }
 
+  choicePayload(concept) {
+    return {
+      id: concept.id,
+      label: drawerLabel(concept, this.settings.language),
+      preview: displayWord(concept, this.settings.language)
+    };
+  }
+
+  secretPayload() {
+    if (!this.currentConcept) return null;
+    return {
+      id: this.currentConcept.id,
+      label: drawerLabel(this.currentConcept, this.settings.language),
+      display: this.currentWord,
+      answers: conceptAnswers(this.currentConcept)
+    };
+  }
+
   publicState() {
     const drawer = this.getDrawer();
+    const showSecret = this.iAmDrawer() || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS;
     return {
       type: "state",
       phase: this.phase,
@@ -75,10 +98,12 @@ class SkribbleGame {
       players: this.getPlayers(),
       drawerId: drawer?.id || null,
       blanks: this.currentWord ? wordBlank(this.currentWord, this.revealedHints) : "",
-      secretWord: this.iAmDrawer() || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS
-        ? this.currentWord
+      secret: showSecret ? this.secretPayload() : null,
+      // legacy string field for older UI bits
+      secretWord: showSecret ? drawerLabel(this.currentConcept, this.settings.language) : null,
+      wordChoices: this.iAmDrawer() && this.phase === PHASE.CHOOSING
+        ? this.wordChoices.map((c) => this.choicePayload(c))
         : null,
-      wordChoices: this.iAmDrawer() && this.phase === PHASE.CHOOSING ? this.wordChoices : null,
       guessedIds: Array.from(this.guessedIds),
       endsAt: this.endsAt,
       roomCode: this.net.roomCode
@@ -88,29 +113,34 @@ class SkribbleGame {
   broadcastState() {
     if (!this.net.isHost) return;
     const base = this.publicState();
-    this.net.broadcast({ ...base, secretWord: null, wordChoices: null });
+    this.net.broadcast({ ...base, secret: null, secretWord: null, wordChoices: null });
 
-    // Send private payloads to drawer
     this.net.connections.forEach((conn) => {
       const player = this.findByPeer(conn.peer);
       if (!player) return;
       const isDrawer = player.id === base.drawerId;
+      const showSecret = isDrawer || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS;
       this.net.sendTo(conn, {
         ...base,
-        secretWord: isDrawer || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS
-          ? this.currentWord
-          : null,
-        wordChoices: isDrawer && this.phase === PHASE.CHOOSING ? this.wordChoices : null
+        secret: showSecret ? this.secretPayload() : null,
+        secretWord: showSecret ? drawerLabel(this.currentConcept, this.settings.language) : null,
+        wordChoices: isDrawer && this.phase === PHASE.CHOOSING
+          ? this.wordChoices.map((c) => this.choicePayload(c))
+          : null
       });
     });
 
-    // Host updates own UI
     this.ui.applyState({
       ...base,
-      secretWord: this.iAmDrawer() || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS
-        ? this.currentWord
+      secret: this.iAmDrawer() || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS
+        ? this.secretPayload()
         : null,
-      wordChoices: this.iAmDrawer() && this.phase === PHASE.CHOOSING ? this.wordChoices : null
+      secretWord: this.iAmDrawer() || this.phase === PHASE.REVEAL || this.phase === PHASE.RESULTS
+        ? drawerLabel(this.currentConcept, this.settings.language)
+        : null,
+      wordChoices: this.iAmDrawer() && this.phase === PHASE.CHOOSING
+        ? this.wordChoices.map((c) => this.choicePayload(c))
+        : null
     });
   }
 
@@ -121,11 +151,11 @@ class SkribbleGame {
   hostStart() {
     if (!this.net.isHost) return;
     if (this.players.size < 2) {
-      this.ui.toast("Need at least 2 players to start.");
+      this.ui.toast("Need at least 2 players / Нужно минимум 2 игрока");
       return;
     }
     try {
-      this.wordPool = buildWordPool(this.settings.customWords, this.settings.customOnly);
+      this.wordPool = buildWordPool(this.settings);
     } catch (err) {
       this.ui.toast(err.message);
       return;
@@ -141,8 +171,9 @@ class SkribbleGame {
 
   beginTurn() {
     this.clearTimers();
+    this.currentConcept = null;
     this.currentWord = null;
-    this.wordChoices = pickWords(this.wordPool, this.settings.wordCount, this.usedWords);
+    this.wordChoices = pickConcepts(this.wordPool, this.settings.wordCount, this.usedWords);
     this.revealedHints = [];
     this.guessedIds = new Set();
     this.turnScores = new Map();
@@ -153,16 +184,21 @@ class SkribbleGame {
     this.ui.systemChat(`${this.getDrawer()?.name || "Someone"} is choosing a word…`);
 
     this.timerId = setTimeout(() => {
-      if (this.phase === PHASE.CHOOSING) {
-        this.chooseWord(this.wordChoices[0]);
+      if (this.phase === PHASE.CHOOSING && this.wordChoices[0]) {
+        this.chooseWord(this.wordChoices[0].id);
       }
     }, 15000);
   }
 
-  chooseWord(word) {
+  chooseWord(conceptId) {
     if (!this.net.isHost || this.phase !== PHASE.CHOOSING) return;
-    this.currentWord = word;
-    this.usedWords.add(word.toLowerCase());
+    const concept = this.wordChoices.find((c) => c.id === conceptId) ||
+      this.wordPool.find((c) => c.id === conceptId);
+    if (!concept) return;
+
+    this.currentConcept = concept;
+    this.currentWord = displayWord(concept, this.settings.language);
+    this.usedWords.add(concept.id);
     this.phase = PHASE.DRAWING;
     this.endsAt = Date.now() + this.settings.drawTime * 1000;
     this.clearTimers();
@@ -198,7 +234,7 @@ class SkribbleGame {
     const guess = String(text || "").trim();
     if (!guess) return;
 
-    if (guess.toLowerCase() === this.currentWord.toLowerCase()) {
+    if (matchesConcept(guess, this.currentConcept)) {
       this.guessedIds.add(playerId);
       const remaining = Math.max(0, this.endsAt - Date.now());
       const pts = Math.round(50 + (remaining / (this.settings.drawTime * 1000)) * 250);
@@ -223,14 +259,14 @@ class SkribbleGame {
       return;
     }
 
-    if (isCloseGuess(guess, this.currentWord)) {
+    if (isCloseGuess(guess, this.currentConcept)) {
       this.net.broadcast({
         type: "chat",
         kind: "close",
-        text: `${player.name}: ${guess}  (close!)`,
+        text: `${player.name}: ${guess}  (close! / близко!)`,
         fromId: playerId
       });
-      this.ui.addChat({ kind: "close", text: `${player.name}: ${guess}  (close!)` });
+      this.ui.addChat({ kind: "close", text: `${player.name}: ${guess}  (close! / близко!)` });
       return;
     }
 
@@ -250,9 +286,10 @@ class SkribbleGame {
     this.phase = PHASE.REVEAL;
     this.endsAt = Date.now() + 4000;
     this.broadcastState();
+    const label = drawerLabel(this.currentConcept, this.settings.language) || this.currentWord;
     const msg = reason === "all"
-      ? `Everyone got it! The word was “${this.currentWord}”.`
-      : `Time's up! The word was “${this.currentWord}”.`;
+      ? `Everyone got it! The word was “${label}”.`
+      : `Time's up! The word was “${label}”.`;
     this.ui.systemChat(msg);
     this.net.broadcast({ type: "chat", kind: "system", text: msg });
 
@@ -269,11 +306,9 @@ class SkribbleGame {
         this.finishGame();
         return;
       }
-      // refresh order each round
       this.drawerOrder = this.getPlayers().map((p) => p.id).sort(() => Math.random() - 0.5);
     }
 
-    // skip missing players
     let guards = 0;
     while (!this.players.has(this.drawerOrder[this.drawerIndex]) && guards < this.drawerOrder.length) {
       this.drawerIndex = (this.drawerIndex + 1) % this.drawerOrder.length;

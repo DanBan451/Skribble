@@ -1,7 +1,14 @@
+const EYE_NAMES = ["dots", "happy", "boxes", "wink"];
+const MOUTH_NAMES = ["smile", "line", "open", "smirk"];
+const HAT_NAMES = ["none", "cap", "crown", "beanie", "party", "flower"];
+
 const UI = {
-  avatarShape: 0,
+  avatarEyes: 0,
   avatarMouth: 0,
+  avatarHat: 0,
   avatarColor: 0,
+  themeId: "classic",
+  themeTitle: "Classic Sketch",
   draw: null,
   tickId: null,
   lastState: null,
@@ -9,11 +16,15 @@ const UI = {
   init() {
     this.draw = new DrawCanvas(document.getElementById("draw-canvas"));
     this.buildPalette();
+    this.buildAvatarColors();
+    this.buildThemeRail();
     this.refreshAvatar();
     this.bindHome();
     this.bindLobby();
     this.bindGame();
     this.bindResults();
+    applyTheme(this.themeId);
+    this.updateFairNote();
     window.addEventListener("resize", () => this.draw.resizeToDisplay());
   },
 
@@ -30,43 +41,118 @@ const UI = {
         el.querySelectorAll(".color-swatch").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         this.draw.setColor(color);
-        if (this.draw.tool === "eraser") {
-          this.setTool("pen");
-        }
+        if (this.draw.tool === "eraser") this.setTool("pen");
       });
       el.appendChild(btn);
     });
   },
 
+  buildAvatarColors() {
+    const row = document.getElementById("avatar-colors");
+    row.innerHTML = "";
+    AVATAR_COLORS.forEach((color, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "av-swatch" + (i === 0 ? " active" : "");
+      btn.style.background = color;
+      btn.addEventListener("click", () => {
+        this.avatarColor = i;
+        row.querySelectorAll(".av-swatch").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.refreshAvatar();
+      });
+      row.appendChild(btn);
+    });
+  },
+
+  buildThemeRail() {
+    const rail = document.getElementById("theme-rail");
+    rail.innerHTML = "";
+    THEMES.forEach((theme) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "theme-card" + (theme.id === this.themeId ? " active" : "");
+      btn.dataset.themeId = theme.id;
+      btn.innerHTML = `<span class="t-emoji">${theme.emoji}</span><span class="t-name">${theme.name}</span>`;
+      btn.addEventListener("click", () => this.selectTheme(theme.id, null, true));
+      rail.appendChild(btn);
+    });
+  },
+
+  selectTheme(id, titleOverride, sync = false) {
+    this.themeId = id;
+    const theme = applyTheme(id);
+    this.themeTitle = titleOverride || theme.name;
+    document.getElementById("theme-emoji").textContent = theme.emoji;
+    document.getElementById("theme-name").textContent = this.themeTitle;
+    document.getElementById("theme-blurb").textContent = theme.blurb;
+    document.querySelectorAll(".theme-card").forEach((c) => {
+      c.classList.toggle("active", c.dataset.themeId === id);
+    });
+    if (sync) this.syncSettings();
+  },
+
+  rollTheme() {
+    const id = randomThemeId(this.themeId);
+    const invented = inventThemeTitle();
+    this.selectTheme(id, invented, true);
+    const theme = getTheme(id);
+    this.toast(`${theme.emoji} ${invented}`);
+  },
+
   bindHome() {
-    document.getElementById("avatar-prev").onclick = () => {
-      this.avatarShape = (this.avatarShape + 3) % 4;
+    const cycle = (key, max, dir) => {
+      this[key] = (this[key] + dir + max) % max;
       this.refreshAvatar();
     };
-    document.getElementById("avatar-next").onclick = () => {
-      this.avatarShape = (this.avatarShape + 1) % 4;
-      this.refreshAvatar();
-    };
+    document.getElementById("eyes-prev").onclick = () => cycle("avatarEyes", EYE_NAMES.length, -1);
+    document.getElementById("eyes-next").onclick = () => cycle("avatarEyes", EYE_NAMES.length, 1);
+    document.getElementById("mouth-prev").onclick = () => cycle("avatarMouth", MOUTH_NAMES.length, -1);
+    document.getElementById("mouth-next").onclick = () => cycle("avatarMouth", MOUTH_NAMES.length, 1);
+    document.getElementById("hat-prev").onclick = () => cycle("avatarHat", HAT_NAMES.length, -1);
+    document.getElementById("hat-next").onclick = () => cycle("avatarHat", HAT_NAMES.length, 1);
     document.getElementById("avatar-random").onclick = () => {
-      this.avatarShape = Math.floor(Math.random() * 4);
-      this.avatarMouth = Math.floor(Math.random() * 3);
+      this.avatarEyes = Math.floor(Math.random() * EYE_NAMES.length);
+      this.avatarMouth = Math.floor(Math.random() * MOUTH_NAMES.length);
+      this.avatarHat = Math.floor(Math.random() * HAT_NAMES.length);
       this.avatarColor = Math.floor(Math.random() * AVATAR_COLORS.length);
+      document.querySelectorAll("#avatar-colors .av-swatch").forEach((b, i) => {
+        b.classList.toggle("active", i === this.avatarColor);
+      });
       this.refreshAvatar();
     };
   },
 
   bindLobby() {
-    const syncSettings = () => {
-      if (!App.game || !App.net.isHost) return;
-      App.game.settings = this.readSettings();
-      App.game.broadcastState();
-    };
-    ["set-rounds", "set-drawtime", "set-wordcount", "set-hints", "set-custom-words", "set-custom-only"]
+    const sync = () => this.syncSettings();
+    ["set-rounds", "set-drawtime", "set-wordcount", "set-hints", "set-custom-words", "set-custom-only", "set-language"]
       .forEach((id) => {
         const el = document.getElementById(id);
-        el.addEventListener("change", syncSettings);
-        if (el.tagName === "TEXTAREA") el.addEventListener("blur", syncSettings);
+        el.addEventListener("change", sync);
+        if (el.tagName === "TEXTAREA") el.addEventListener("blur", sync);
       });
+    document.getElementById("set-language").addEventListener("change", () => this.updateFairNote());
+    document.getElementById("btn-roll-theme").onclick = () => this.rollTheme();
+  },
+
+  syncSettings() {
+    if (!App.game || !App.net.isHost) return;
+    App.game.settings = this.readSettings();
+    App.game.broadcastState();
+  },
+
+  updateFairNote() {
+    const lang = document.getElementById("set-language").value;
+    const note = document.getElementById("fair-note");
+    if (lang === "fair") {
+      note.textContent = "Fair mode: drawer sees EN · RU · UK, and any of those guesses count. Best for mixed-language friends.";
+    } else if (lang === "ru") {
+      note.textContent = "Blanks/hints use Russian. In-theme words still accept EN/UK translations too, so nobody is stuck.";
+    } else if (lang === "uk") {
+      note.textContent = "Blanks/hints use Ukrainian. Matching EN/RU translations still count.";
+    } else {
+      note.textContent = "Blanks/hints use English. Matching RU/UK translations still count so it's less unfair.";
+    }
   },
 
   bindGame() {
@@ -86,10 +172,7 @@ const UI = {
       if (!this.draw.enabled) return;
       this.draw.clear(true);
     };
-
-    this.draw.onStroke = (stroke) => {
-      App.sendStroke(stroke);
-    };
+    this.draw.onStroke = (stroke) => App.sendStroke(stroke);
 
     document.getElementById("chat-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -108,17 +191,23 @@ const UI = {
 
   refreshAvatar() {
     const el = document.getElementById("avatar-preview");
-    el.dataset.shape = String(this.avatarShape);
+    el.dataset.eyes = String(this.avatarEyes);
     el.dataset.mouth = String(this.avatarMouth);
+    el.dataset.hat = String(this.avatarHat);
     el.style.background = AVATAR_COLORS[this.avatarColor];
-    el.innerHTML = `<span class="mouth"></span>`;
+    document.getElementById("eyes-label").textContent = EYE_NAMES[this.avatarEyes];
+    document.getElementById("mouth-label").textContent = MOUTH_NAMES[this.avatarMouth];
+    document.getElementById("hat-label").textContent = HAT_NAMES[this.avatarHat];
   },
 
   getAvatar() {
     return {
-      shape: this.avatarShape,
+      eyes: this.avatarEyes,
       mouth: this.avatarMouth,
-      color: this.avatarColor
+      hat: this.avatarHat,
+      color: this.avatarColor,
+      // legacy keys so old sessions don't explode
+      shape: this.avatarEyes
     };
   },
 
@@ -134,7 +223,10 @@ const UI = {
       wordCount: Number(document.getElementById("set-wordcount").value),
       hints: Number(document.getElementById("set-hints").value),
       customWords: document.getElementById("set-custom-words").value,
-      customOnly: document.getElementById("set-custom-only").checked
+      customOnly: document.getElementById("set-custom-only").checked,
+      language: document.getElementById("set-language").value,
+      themeId: this.themeId,
+      themeTitle: this.themeTitle
     };
   },
 
@@ -145,6 +237,9 @@ const UI = {
     document.getElementById("set-hints").value = String(s.hints);
     document.getElementById("set-custom-words").value = s.customWords || "";
     document.getElementById("set-custom-only").checked = !!s.customOnly;
+    document.getElementById("set-language").value = s.language || "fair";
+    if (s.themeId) this.selectTheme(s.themeId, s.themeTitle);
+    this.updateFairNote();
   },
 
   showScreen(id) {
@@ -177,10 +272,22 @@ const UI = {
   renderAvatarNode(avatar) {
     const div = document.createElement("div");
     div.className = "avatar";
-    div.dataset.shape = String(avatar.shape);
-    div.dataset.mouth = String(avatar.mouth);
-    div.style.background = AVATAR_COLORS[avatar.color % AVATAR_COLORS.length];
-    div.innerHTML = `<span class="mouth"></span>`;
+    const eyes = avatar.eyes ?? avatar.shape ?? 0;
+    const mouth = avatar.mouth ?? 0;
+    const hat = avatar.hat ?? 0;
+    const color = avatar.color ?? 0;
+    div.dataset.eyes = String(eyes);
+    div.dataset.mouth = String(mouth);
+    div.dataset.hat = String(hat);
+    div.style.background = AVATAR_COLORS[color % AVATAR_COLORS.length];
+    div.innerHTML = `
+      <span class="av-hat"></span>
+      <span class="av-face">
+        <span class="av-eye left"></span>
+        <span class="av-eye right"></span>
+        <span class="av-mouth"></span>
+      </span>
+    `;
     return div;
   },
 
@@ -211,12 +318,18 @@ const UI = {
     panel.classList.toggle("is-guest", !isHost);
     document.getElementById("btn-start").disabled = !isHost || players.length < 2;
     document.getElementById("host-note").textContent = isHost
-      ? "You are the host. Tweak settings, then start when ready."
+      ? "You are the host. Pick a vibe, then start when ready."
       : "Only the host can change settings and start.";
   },
 
   applyState(state) {
     this.lastState = state;
+    if (state.settings?.themeId) {
+      applyTheme(state.settings.themeId);
+      this.themeId = state.settings.themeId;
+      this.themeTitle = state.settings.themeTitle || getTheme(state.settings.themeId).name;
+    }
+
     if (state.phase === PHASE.LOBBY) {
       this.showScreen("screen-lobby");
       this.writeSettings(state.settings);
@@ -233,6 +346,9 @@ const UI = {
 
     this.showScreen("screen-game");
     document.getElementById("game-room-code").textContent = state.roomCode;
+    const theme = getTheme(state.settings.themeId || "classic");
+    document.getElementById("game-theme-chip").textContent =
+      `${theme.emoji} ${state.settings.themeTitle || theme.name}`;
     document.getElementById("round-label").textContent =
       `Round ${state.round} / ${state.settings.rounds}`;
 
@@ -240,17 +356,18 @@ const UI = {
     const amDrawer = drawerId === App.me.id;
     const alreadyGuessed = (state.guessedIds || []).includes(App.me.id);
 
-    // Word display
     const wordEl = document.getElementById("word-display");
     if (amDrawer && state.secretWord) {
-      wordEl.textContent = state.secretWord.toUpperCase();
+      wordEl.textContent = state.secretWord;
+      wordEl.classList.add("drawer-word");
     } else if (state.phase === PHASE.REVEAL && state.secretWord) {
-      wordEl.textContent = state.secretWord.toUpperCase();
+      wordEl.textContent = state.secretWord;
+      wordEl.classList.remove("drawer-word");
     } else {
       wordEl.textContent = state.blanks || "…";
+      wordEl.classList.remove("drawer-word");
     }
 
-    // Overlays
     const choose = document.getElementById("choose-overlay");
     const reveal = document.getElementById("reveal-overlay");
     const waiting = document.getElementById("waiting-overlay");
@@ -266,8 +383,8 @@ const UI = {
         state.wordChoices.forEach((w) => {
           const b = document.createElement("button");
           b.type = "button";
-          b.textContent = w;
-          b.onclick = () => App.chooseWord(w);
+          b.textContent = w.label || w.preview || w;
+          b.onclick = () => App.chooseWord(w.id || w);
           box.appendChild(b);
         });
       } else {
@@ -282,12 +399,10 @@ const UI = {
         `The word was “${state.secretWord || "???"}”`;
     }
 
-    // Toolbar
     const canDraw = amDrawer && state.phase === PHASE.DRAWING;
     document.getElementById("toolbar").classList.toggle("hidden", !canDraw);
     this.draw.setEnabled(canDraw);
 
-    // Chat lock for drawer / already guessed
     const chatInput = document.getElementById("chat-input");
     if (amDrawer) {
       chatInput.disabled = true;
@@ -300,7 +415,12 @@ const UI = {
       chatInput.placeholder = "Waiting…";
     } else {
       chatInput.disabled = false;
-      chatInput.placeholder = "Type your guess…";
+      const lang = state.settings.language;
+      chatInput.placeholder = lang === "fair"
+        ? "Guess in EN / RU / UK…"
+        : lang === "ru" ? "Ваш ответ…"
+          : lang === "uk" ? "Ваша відповідь…"
+            : "Type your guess…";
     }
 
     this.renderScores(state.players, drawerId, state.guessedIds || []);

@@ -4,15 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skribble — Draw & Guess</title>
-  <meta name="description" content="Multiplayer drawing and guessing game. Create a room, invite friends, pick custom words, and draw!" />
+  <meta name="description" content="Multiplayer drawing and guessing game with themes and fair EN/RU/UK words." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>" />
 </head>
-<body>
+<body data-theme="classic">
   <div class="bg-noise" aria-hidden="true"></div>
+  <div class="bg-motif" aria-hidden="true"></div>
 
   <!-- HOME -->
   <section id="screen-home" class="screen active">
@@ -24,17 +25,46 @@
 
       <div class="home-panel">
         <label class="field">
-          <span>Your name</span>
-          <input id="player-name" type="text" maxlength="16" placeholder="Enter a nickname" autocomplete="off" />
+          <span>Your name / Ім'я / Имя</span>
+          <input id="player-name" type="text" maxlength="16" placeholder="Daniel" autocomplete="off" />
         </label>
 
-        <div class="avatar-picker">
-          <span class="field-label">Avatar</span>
-          <div class="avatar-row">
-            <button type="button" class="icon-btn" id="avatar-prev" aria-label="Previous avatar">‹</button>
-            <div id="avatar-preview" class="avatar" data-shape="0" data-color="0"></div>
-            <button type="button" class="icon-btn" id="avatar-next" aria-label="Next avatar">›</button>
-            <button type="button" class="ghost-btn" id="avatar-random">Shuffle</button>
+        <div class="avatar-studio">
+          <span class="field-label">Make your doodle face</span>
+          <div class="avatar-studio-row">
+            <div id="avatar-preview" class="avatar avatar-lg" data-eyes="0" data-mouth="0" data-hat="0">
+              <span class="av-hat"></span>
+              <span class="av-face">
+                <span class="av-eye left"></span>
+                <span class="av-eye right"></span>
+                <span class="av-mouth"></span>
+              </span>
+            </div>
+            <div class="avatar-controls">
+              <div class="av-control">
+                <span>Color</span>
+                <div id="avatar-colors" class="av-color-row"></div>
+              </div>
+              <div class="av-control cycle">
+                <span>Eyes</span>
+                <button type="button" class="icon-btn" id="eyes-prev" aria-label="Previous eyes">‹</button>
+                <em id="eyes-label">dots</em>
+                <button type="button" class="icon-btn" id="eyes-next" aria-label="Next eyes">›</button>
+              </div>
+              <div class="av-control cycle">
+                <span>Mouth</span>
+                <button type="button" class="icon-btn" id="mouth-prev" aria-label="Previous mouth">‹</button>
+                <em id="mouth-label">smile</em>
+                <button type="button" class="icon-btn" id="mouth-next" aria-label="Next mouth">›</button>
+              </div>
+              <div class="av-control cycle">
+                <span>Hat</span>
+                <button type="button" class="icon-btn" id="hat-prev" aria-label="Previous hat">‹</button>
+                <em id="hat-label">none</em>
+                <button type="button" class="icon-btn" id="hat-next" aria-label="Next hat">›</button>
+              </div>
+              <button type="button" class="ghost-btn" id="avatar-random">🎲 Surprise face</button>
+            </div>
           </div>
         </div>
 
@@ -55,7 +85,7 @@
       <header class="lobby-top">
         <div class="logo-sm">Skribble</div>
         <div class="room-invite">
-          <span>Invite code</span>
+          <span>Invite</span>
           <strong id="room-code-display">------</strong>
           <button type="button" class="btn btn-tiny" id="btn-copy-invite">Copy link</button>
         </div>
@@ -69,7 +99,31 @@
         </aside>
 
         <div class="settings-panel" id="settings-panel">
-          <h2>Room settings</h2>
+          <div class="theme-head">
+            <div>
+              <h2>Room vibe</h2>
+              <p class="hint" id="theme-blurb">Pick a look + word mood, or roll a surprise.</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-roll-theme">✨ Roll a theme</button>
+          </div>
+
+          <div id="theme-rail" class="theme-rail"></div>
+          <p class="theme-now"><span id="theme-emoji">✏️</span> <strong id="theme-name">Classic Sketch</strong></p>
+
+          <label class="field">
+            <span>Word language / Мова слів</span>
+            <select id="set-language">
+              <option value="fair" selected>Fair mode — EN + RU + UK all count ✅</option>
+              <option value="en">English only</option>
+              <option value="ru">Русский</option>
+              <option value="uk">Українська</option>
+            </select>
+          </label>
+          <p class="fair-note" id="fair-note">
+            Fair mode is best for your group: the drawer sees all translations, and guessing
+            <em>apple</em>, <em>яблоко</em>, or <em>яблуко</em> all count.
+          </p>
+
           <div class="settings-grid">
             <label class="field">
               <span>Rounds</span>
@@ -118,14 +172,17 @@
             </label>
           </div>
 
-          <label class="field">
-            <span>Custom words <em>(comma-separated, min 10 for custom-only)</em></span>
-            <textarea id="set-custom-words" rows="4" placeholder="pizza, skateboard, volcano, headphones, cactus, ..."></textarea>
-          </label>
-          <label class="check">
-            <input type="checkbox" id="set-custom-only" />
-            <span>Use custom words only</span>
-          </label>
+          <details class="advanced">
+            <summary>Custom words (optional)</summary>
+            <label class="field">
+              <span>Comma-separated — any language is fine</span>
+              <textarea id="set-custom-words" rows="3" placeholder="борщ, metro, кактус, disco ball, ..."></textarea>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="set-custom-only" />
+              <span>Use custom words only (min 10)</span>
+            </label>
+          </details>
 
           <div class="lobby-actions">
             <button type="button" class="btn btn-primary" id="btn-start" disabled>Start game</button>
@@ -147,6 +204,7 @@
         </div>
         <div class="word-display" id="word-display">_ _ _ _</div>
         <div class="game-room">
+          <span id="game-theme-chip" class="theme-chip"></span>
           <span id="game-room-code"></span>
         </div>
       </header>
@@ -220,6 +278,7 @@
   </div>
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/themes.js"></script>
   <script src="js/words.js"></script>
   <script src="js/canvas.js"></script>
   <script src="js/net.js"></script>
