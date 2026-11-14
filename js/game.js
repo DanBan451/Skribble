@@ -40,11 +40,20 @@ class SkribbleGame {
   }
 
   addPlayer(player) {
-    this.players.set(player.id, {
-      id: player.id,
+    const id = player.id;
+    // Drop ghost seats from the same browser / same live peer
+    for (const [pid, p] of [...this.players.entries()]) {
+      if (pid === id) continue;
+      if (player.peerId && p.peerId && p.peerId === player.peerId) {
+        this.players.delete(pid);
+      }
+    }
+    const prev = this.players.get(id);
+    this.players.set(id, {
+      id,
       name: player.name,
       avatar: player.avatar,
-      score: player.score || 0,
+      score: player.score != null ? player.score : prev?.score || 0,
       peerId: player.peerId || null,
       isHost: !!player.isHost
     });
@@ -52,6 +61,15 @@ class SkribbleGame {
 
   removePlayer(id) {
     this.players.delete(id);
+  }
+
+  /** Only remove if this peer is still the one attached to that seat (ignore stale closes after rejoin). */
+  removeByPeer(peerId) {
+    const player = this.findByPeer(peerId);
+    if (!player) return null;
+    if (player.peerId !== peerId) return null;
+    this.players.delete(player.id);
+    return player;
   }
 
   getPlayers() {

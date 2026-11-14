@@ -14,6 +14,20 @@ function makePlayerId() {
   return "p_" + Math.random().toString(36).slice(2, 10);
 }
 
+/** Stable per-browser id (survives refresh). Not IP — browsers can't expose that. */
+function getStableClientId() {
+  try {
+    let id = localStorage.getItem("skribble-client-id");
+    if (!id || !/^c_[a-z0-9]+$/i.test(id)) {
+      id = "c_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      localStorage.setItem("skribble-client-id", id);
+    }
+    return id;
+  } catch (_) {
+    return makePlayerId();
+  }
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -40,7 +54,7 @@ class NetRoom {
     this.connections = new Map();
     this.isHost = false;
     this.roomCode = null;
-    this.playerId = makePlayerId();
+    this.playerId = getStableClientId();
     this.onMessage = null;
     this.onPeerJoin = null;
     this.onPeerLeave = null;

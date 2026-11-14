@@ -87,15 +87,16 @@ const App = {
     }
   },
 
-  makeMe(isHost, preferId) {
+  makeMe(isHost) {
     const name = UI.getName();
     try {
       localStorage.setItem("skribble-name", name);
     } catch (_) {
       /* ignore */
     }
+    // Always the same id on this laptop/browser — refresh won't mint a new seat
     this.me = {
-      id: preferId || this.net.playerId,
+      id: getStableClientId(),
       name,
       avatar: UI.getAvatar(),
       isHost,
@@ -152,14 +153,7 @@ const App = {
   },
 
   setupGuest() {
-    let preferId = null;
-    try {
-      const raw = sessionStorage.getItem("skribble-session");
-      if (raw) preferId = JSON.parse(raw).playerId || null;
-    } catch (_) {
-      /* ignore */
-    }
-    this.makeMe(false, preferId);
+    this.makeMe(false);
     this.me.isHost = false;
     this.game = new SkribbleGame({ net: this.net, me: this.me, ui: UI });
     UI.clearChat();
@@ -205,10 +199,13 @@ const App = {
 
     if (this.net.isHost) {
       if (data.type === "hello") {
-        // Rejoin with same id keeps score if still in map; otherwise fresh
-        const existing = this.game.players.get(data.player.id);
+        const id = data.player?.id || getStableClientId();
+        const existing = this.game.players.get(id);
+        const wasHere = !!existing;
         const player = {
-          ...data.player,
+          id,
+          name: data.player.name,
+          avatar: data.player.avatar,
           peerId: conn.peer,
           isHost: false,
           score: existing ? existing.score : 0
@@ -231,11 +228,13 @@ const App = {
                 : null
           }
         });
-        UI.systemChat(`${player.name} joined!`);
-        this.net.broadcast(
-          { type: "chat", kind: "system", text: `${player.name} joined!` },
-          conn.peer
-        );
+        if (!wasHere) {
+          UI.systemChat(`${player.name} joined!`);
+          this.net.broadcast(
+            { type: "chat", kind: "system", text: `${player.name} joined!` },
+            conn.peer
+          );
+        }
         this.game.broadcastState();
         return;
       }
@@ -298,9 +297,8 @@ const App = {
 
   onPeerLeave(peerId) {
     if (!this.net.isHost || !this.game) return;
-    const player = this.game.findByPeer(peerId);
+    const player = this.game.removeByPeer(peerId);
     if (!player) return;
-    this.game.removePlayer(player.id);
     UI.systemChat(`${player.name} left.`);
     this.net.broadcast({ type: "chat", kind: "system", text: `${player.name} left.` });
 
