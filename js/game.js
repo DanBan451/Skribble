@@ -39,21 +39,102 @@ class SkribbleGame {
     this.turnScores = new Map();
   }
 
+  nameKey(name) {
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  peerIsLive(peerId) {
+    if (!peerId) return false;
+    if (this.me?.peerId && peerId === this.me.peerId) return true;
+    const conn = this.net.connections.get(peerId);
+    return !!(conn && conn.open);
+  }
+
+  /** Drop seats whose peer is gone, and merge same-name guests into one seat. */
+  pruneStalePlayers() {
+    if (!this.net?.isHost) return;
+
+    for (const [id, p] of [...this.players.entries()]) {
+      if (p.isHost || id === this.me?.id) continue;
+      if (!this.peerIsLive(p.peerId)) {
+        this.players.delete(id);
+      }
+    }
+
+    const byName = new Map();
+    for (const [id, p] of [...this.players.entries()]) {
+      if (p.isHost) continue;
+      const key = this.nameKey(p.name);
+      if (!key) continue;
+      const prev = byName.get(key);
+      if (!prev) {
+        byName.set(key, p);
+        continue;
+      }
+      // Keep the live / higher-score seat; drop the other
+      const keep =
+        this.peerIsLive(p.peerId) && !this.peerIsLive(prev.peerId)
+          ? p
+          : !this.peerIsLive(p.peerId) && this.peerIsLive(prev.peerId)
+            ? prev
+            : (p.score || 0) >= (prev.score || 0)
+              ? p
+              : prev;
+      const drop = keep.id === p.id ? prev : p;
+      if (drop.peerId && drop.peerId !== keep.peerId) {
+        const old = this.net.connections.get(drop.peerId);
+        try {
+          old?.close();
+        } catch (_) {
+          /* ignore */
+        }
+        this.net.connections.delete(drop.peerId);
+      }
+      this.players.delete(drop.id);
+      byName.set(key, keep);
+      keep.score = Math.max(keep.score || 0, drop.score || 0);
+      this.players.set(keep.id, keep);
+    }
+  }
+
   addPlayer(player) {
+    this.pruneStalePlayers();
     const id = player.id;
-    // Drop ghost seats from the same browser / same live peer
+    const key = this.nameKey(player.name);
+    let score = player.score != null ? player.score : 0;
+
     for (const [pid, p] of [...this.players.entries()]) {
       if (pid === id) continue;
-      if (player.peerId && p.peerId && p.peerId === player.peerId) {
+      if (p.isHost) continue;
+      const samePeer = player.peerId && p.peerId && p.peerId === player.peerId;
+      const sameName = key && this.nameKey(p.name) === key;
+      const sameId = pid === id;
+      if (samePeer || sameName || sameId) {
+        score = Math.max(score, p.score || 0);
+        if (p.peerId && player.peerId && p.peerId !== player.peerId) {
+          const old = this.net.connections.get(p.peerId);
+          try {
+            old?.close();
+          } catch (_) {
+            /* ignore */
+          }
+          this.net.connections.delete(p.peerId);
+        }
         this.players.delete(pid);
       }
     }
+
     const prev = this.players.get(id);
+    if (prev) score = Math.max(score, prev.score || 0);
+
     this.players.set(id, {
       id,
       name: player.name,
       avatar: player.avatar,
-      score: player.score != null ? player.score : prev?.score || 0,
+      score,
       peerId: player.peerId || null,
       isHost: !!player.isHost
     });
@@ -130,6 +211,7 @@ class SkribbleGame {
 
   broadcastState() {
     if (!this.net.isHost) return;
+    this.pruneStalePlayers();
     const base = this.publicState();
     this.net.broadcast({ ...base, secret: null, secretWord: null, wordChoices: null });
 

@@ -1,5 +1,5 @@
 /** Everyone who opens the site joins this shared room. No codes. */
-const PUBLIC_ROOM = "PLAY";
+const PUBLIC_ROOM = "PLAY2";
 
 function makeRoomCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

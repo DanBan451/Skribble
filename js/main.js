@@ -199,8 +199,15 @@ const App = {
 
     if (this.net.isHost) {
       if (data.type === "hello") {
+        this.game.pruneStalePlayers();
         const id = data.player?.id || getStableClientId();
-        const existing = this.game.players.get(id);
+        const nameKey = this.game.nameKey(data.player.name);
+        let existing = this.game.players.get(id);
+        if (!existing && nameKey) {
+          existing = this.game.getPlayers().find(
+            (p) => !p.isHost && this.game.nameKey(p.name) === nameKey
+          );
+        }
         const wasHere = !!existing;
         const player = {
           id,
